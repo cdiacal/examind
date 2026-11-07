@@ -56,3 +56,18 @@ suspend fun BaseDatos.crearCopia(ahora: Long): CopiaSeguridad.Copia = CopiaSegur
     },
     respuestas = tests().todasLasRespuestas().map { CopiaSeguridad.Respuesta(it.testId, it.preguntaId, it.orden, it.elegida, it.acertada) }
 )
+
+fun PreguntaNueva.aBorrador(temarioId: Long, fragmentoId: Long, creadaEl: Long): BorradorEntidad = BorradorEntidad(
+    temarioId = temarioId,
+    fragmentoId = fragmentoId,
+    enunciado = enunciado,
+    opciones = opciones,
+    correcta = correcta,
+    explicacion = explicacion,
+    pagina = pagina,
+    huella = huella,
+    creadaEl = creadaEl
+)
+
+fun BorradorEntidad.aNueva(): PreguntaNueva =
+    PreguntaNueva(enunciado, opciones, correcta, explicacion, Origen.TEMARIO, pagina, null)

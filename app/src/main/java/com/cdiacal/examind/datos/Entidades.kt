@@ -96,3 +96,25 @@ data class RespuestaEntidad(
     val elegida: Int?,
     val acertada: Boolean?
 )
+
+/**
+ * Una pregunta que ha escrito la IA y está pendiente de revisar (la generación va en segundo plano y se revisa
+ * después). [fragmentoId] es el fragmento del que sale, para devolverlo a «sin usar» si se descartan todas.
+ */
+@Entity(
+    tableName = "borradores",
+    foreignKeys = [ForeignKey(TemarioEntidad::class, ["id"], ["temarioId"], onDelete = ForeignKey.CASCADE)],
+    indices = [Index("temarioId")]
+)
+data class BorradorEntidad(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val temarioId: Long,
+    val fragmentoId: Long,
+    val enunciado: String,
+    val opciones: List<String>,
+    val correcta: Int,
+    val explicacion: String,
+    val pagina: Int?,
+    val huella: String,
+    val creadaEl: Long
+)

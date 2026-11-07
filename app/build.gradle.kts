@@ -81,6 +81,9 @@ dependencies {
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta5")
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.18.1")
 
+    // Crear preguntas en segundo plano
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
+
     // Leer el texto de los PDF
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 

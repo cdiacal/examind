@@ -1,6 +1,12 @@
 package com.cdiacal.examind.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,12 +47,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cdiacal.examind.datos.BorradorEntidad
 import com.cdiacal.examind.datos.PreguntaEntidad
+import com.cdiacal.examind.datos.aNueva
 import com.cdiacal.examind.estilo.BarraSeleccion
 import com.cdiacal.examind.estilo.BotonPrincipal
 import com.cdiacal.examind.estilo.BotonSecundario
@@ -80,12 +88,16 @@ fun PantallaTemario(
     val temario by vm.temario.collectAsStateWithLifecycle()
     val delTemario by vm.delTemario.collectAsStateWithLifecycle()
     val online by vm.online.collectAsStateWithLifecycle()
-    val generacion by vm.generacion.collectAsStateWithLifecycle()
+    val trabajo by vm.trabajo.collectAsStateWithLifecycle()
+    val error by vm.error.collectAsStateWithLifecycle()
+    val borradores by vm.borradores.collectAsStateWithLifecycle()
+    val revisando by vm.revisando.collectAsStateWithLifecycle()
     val alcance = rememberCoroutineScope()
 
-    val revisando = generacion as? EstadoGeneracion.Revisando
-    if (revisando != null) {
-        PantallaRevision(vm, revisando) { guardadas, n ->
+    if (revisando && borradores.isNotEmpty()) {
+        // Lo que se revisa es lo que había al entrar: si la IA sigue escribiendo, lo nuevo queda para otra revisión
+        val revisados = remember { borradores }
+        PantallaRevision(vm, revisados, trabajo) { guardadas, n ->
             alcance.launch {
                 avisos.currentSnackbarData?.dismiss()
                 val r = avisos.showSnackbar("${Formato.cantidad(n, "pregunta guardada", "preguntas guardadas")}.", actionLabel = "Deshacer")
@@ -93,14 +105,6 @@ fun PantallaTemario(
             }
         }
         return
-    }
-
-    // Mientras la IA trabaja, que no se apague la pantalla (si se va la app, se para)
-    val ocupado = generacion is EstadoGeneracion.Generando || generacion is EstadoGeneracion.CargandoMotor
-    val vista = LocalView.current
-    DisposableEffect(ocupado) {
-        vista.keepScreenOn = ocupado
-        onDispose { vista.keepScreenOn = false }
     }
 
     var pestana by rememberSaveable { mutableIntStateOf(0) }
@@ -139,7 +143,19 @@ fun PantallaTemario(
             )
             if (total > 0) BotonPrincipal("Hacer un test con este temario", Modifier.fillMaxWidth()) { onHacerTest(t.id) }
 
-            TarjetaCrear(vm, generacion, t.fragmentosSinUsar)
+            if (borradores.isNotEmpty()) {
+                TarjetaPanel {
+                    Text("${Formato.cantidad(borradores.size, "pregunta", "preguntas")} por revisar", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "La IA las ha escrito; revísalas y guarda las que te convenzan.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    BotonPrincipal("Revisar", onClick = vm::empezarRevision)
+                }
+            }
+            TarjetaCrear(vm, trabajo, error, t.fragmentosSinUsar)
 
             FilaPestanas(
                 listOf("Del temario (${delTemario.size})", "Online (${online.size})"),
@@ -225,54 +241,69 @@ fun PantallaTemario(
 }
 
 @Composable
-private fun TarjetaCrear(vm: TemarioViewModel, generacion: EstadoGeneracion, sinUsar: Int) {
+private fun TarjetaCrear(vm: TemarioViewModel, trabajo: EstadoTrabajo, error: String?, sinUsar: Int) {
     var cuantos by rememberSaveable { mutableIntStateOf(5) }
     val gris = MaterialTheme.colorScheme.onSurfaceVariant
     val barra = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp))
+    // En Android 13 o posterior hay que pedir permiso para avisar con notificaciones; sin él, funciona igual pero sin avisos
+    val pedirPermiso = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { vm.generar(cuantos) }
+    val context = LocalContext.current
+    fun crear() {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) pedirPermiso.launch(Manifest.permission.POST_NOTIFICATIONS)
+        else vm.generar(cuantos)
+    }
+
     TarjetaPanel {
         Text("Crear preguntas con la IA", style = MaterialTheme.typography.titleMedium)
-        when (generacion) {
-            EstadoGeneracion.CargandoMotor -> {
-                Text("Cargando la IA del móvil… puede tardar unos segundos.", style = MaterialTheme.typography.bodySmall, color = gris)
-                Spacer(Modifier.height(8.dp))
-                LinearProgressIndicator(barra, trackColor = MaterialTheme.colorScheme.surfaceVariant)
+        when (trabajo) {
+            EstadoTrabajo.EnCola -> {
+                Text("En cola: la IA está terminando con otro temario y seguirá con este.", style = MaterialTheme.typography.bodySmall, color = gris)
                 Spacer(Modifier.height(8.dp))
                 BotonSecundario("Cancelar", onClick = vm::cancelarGeneracion)
             }
-            is EstadoGeneracion.Generando -> {
-                val a = generacion.avance
+            is EstadoTrabajo.Generando -> {
                 Text(
-                    "Fragmento ${minOf(a.hechos + 1, a.total)} de ${a.total} con ${generacion.motor} · ${Formato.cantidad(a.nuevas, "pregunta nueva", "preguntas nuevas")}",
+                    if (trabajo.total == 0) "Cargando la IA del móvil… puede tardar unos segundos."
+                    else "Fragmento ${minOf(trabajo.hechos + 1, trabajo.total)} de ${trabajo.total}" +
+                        (trabajo.motor?.let { " con $it" } ?: "") +
+                        " · ${Formato.cantidad(trabajo.nuevas, "pregunta nueva", "preguntas nuevas")}",
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(Modifier.height(8.dp))
-                LinearProgressIndicator(if (a.total > 0) a.hechos.toFloat() / a.total else 0f, barra, trackColor = MaterialTheme.colorScheme.surfaceVariant)
+                if (trabajo.total == 0) LinearProgressIndicator(barra, trackColor = MaterialTheme.colorScheme.surfaceVariant)
+                else LinearProgressIndicator(trabajo.hechos.toFloat() / trabajo.total, barra, trackColor = MaterialTheme.colorScheme.surfaceVariant)
                 Spacer(Modifier.height(4.dp))
-                Text("No salgas de la app mientras tanto: si se cierra, se para.", style = MaterialTheme.typography.bodySmall, color = gris)
+                Text(
+                    "Sigue en segundo plano aunque salgas de la app o apagues la pantalla. Te avisaremos al terminar; lo que ya esté hecho se guarda aunque canceles.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = gris
+                )
                 Spacer(Modifier.height(8.dp))
                 BotonSecundario("Cancelar", onClick = vm::cancelarGeneracion)
             }
-            else -> {
-                if (generacion is EstadoGeneracion.Error) {
-                    Text(generacion.mensaje, style = MaterialTheme.typography.bodySmall, color = colorGasto())
+            EstadoTrabajo.Inactivo -> {
+                if (error != null) {
+                    Text(error, style = MaterialTheme.typography.bodySmall, color = colorGasto())
                     Spacer(Modifier.height(8.dp))
                 }
                 if (sinUsar == 0) {
                     Text("Ya se han usado todos los fragmentos del temario.", style = MaterialTheme.typography.bodySmall, color = gris)
                 } else {
                     Text(
-                        "Quedan ${Formato.cantidad(sinUsar, "fragmento")} sin usar. La IA escribe unas 3 preguntas por fragmento y tú eliges cuáles guardar.",
+                        "Quedan ${Formato.cantidad(sinUsar, "fragmento")} sin usar. La IA escribe unas 3 preguntas por fragmento en segundo plano y tú eliges cuáles guardar.",
                         style = MaterialTheme.typography.bodySmall,
                         color = gris
                     )
                     Spacer(Modifier.height(8.dp))
                     FilaPestanas(
-                        CUANTOS.map { if (it > 1000) "Todos" else "$it fragmentos" },
+                        CUANTOS.map { if (it > 1000) "Todos ($sinUsar)" else "$it fragmentos" },
                         CUANTOS.indexOf(cuantos).coerceAtLeast(0),
                         { cuantos = CUANTOS[it] }
                     )
                     Spacer(Modifier.height(8.dp))
-                    BotonPrincipal("Crear preguntas", onClick = { vm.generar(cuantos) })
+                    BotonPrincipal("Crear preguntas", onClick = ::crear)
                 }
             }
         }
@@ -340,34 +371,52 @@ private fun DetallePregunta(opciones: List<String>, correcta: Int, explicacion: 
 
 /** Revisar lo que ha escrito la IA antes de guardarlo: todas marcadas, se desmarcan las que no convenzan. */
 @Composable
-private fun PantallaRevision(vm: TemarioViewModel, r: EstadoGeneracion.Revisando, onGuardado: (PreguntasGuardadas, Int) -> Unit) {
+private fun PantallaRevision(
+    vm: TemarioViewModel,
+    revisados: List<BorradorEntidad>,
+    trabajo: EstadoTrabajo,
+    onGuardado: (PreguntasGuardadas, Int) -> Unit
+) {
+    val desmarcados by vm.desmarcados.collectAsStateWithLifecycle()
+    BackHandler { vm.salirRevision() }
+    val marcadas = revisados.count { it.id !in desmarcados }
     var preguntarDescartar by remember { mutableStateOf(false) }
-    BackHandler { preguntarDescartar = true }
 
     Column(Modifier.fillMaxSize()) {
         Column(
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            CabeceraSimple(titulo = "Revisa las preguntas", subtitulo = r.resumen, onVolver = { preguntarDescartar = true })
+            CabeceraSimple(
+                titulo = "Revisa las preguntas",
+                subtitulo = Formato.cantidad(revisados.size, "pregunta nueva", "preguntas nuevas"),
+                onVolver = vm::salirRevision
+            )
             Text(
-                "La IA puede equivocarse: comprueba la respuesta marcada con ✓ y desmarca las que no te convenzan.",
+                "La IA puede equivocarse: comprueba la respuesta marcada con ✓ y desmarca las que no te convenzan. Si sales sin guardar, siguen pendientes.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (trabajo is EstadoTrabajo.Generando) {
+                Text(
+                    "La IA sigue escribiendo: las que lleguen ahora quedarán para la próxima revisión.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Row {
                 TextButton(onClick = { vm.seleccionarTodas(true) }) { Text("Marcar todas") }
                 TextButton(onClick = { vm.seleccionarTodas(false) }) { Text("Desmarcar todas") }
             }
-            r.preguntas.forEachIndexed { i, p -> TarjetaRevision(p, i in r.seleccion) { vm.alternar(i) } }
+            revisados.forEach { b -> TarjetaRevision(b.aNueva(), b.id !in desmarcados) { vm.alternar(b.id) } }
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            BotonSecundario("Descartar", Modifier.weight(1f), onClick = { preguntarDescartar = true })
+            BotonSecundario("Descartar todas", Modifier.weight(1f), onClick = { preguntarDescartar = true })
             BotonPrincipal(
-                if (r.seleccion.isEmpty()) "Guardar" else "Guardar ${r.seleccion.size}",
+                if (marcadas == 0) "Guardar" else "Guardar $marcadas",
                 Modifier.weight(1f),
-                habilitado = r.seleccion.isNotEmpty()
-            ) { vm.guardarRevisadas(onGuardado) }
+                habilitado = marcadas > 0
+            ) { vm.guardarRevisadas(revisados, onGuardado) }
         }
     }
 
@@ -376,10 +425,10 @@ private fun PantallaRevision(vm: TemarioViewModel, r: EstadoGeneracion.Revisando
             titulo = "¿Descartar estas preguntas?",
             onCerrar = { preguntarDescartar = false },
             textoConfirmar = "Descartar",
-            onConfirmar = { preguntarDescartar = false; vm.descartar() },
+            onConfirmar = { preguntarDescartar = false; vm.descartar(revisados) },
             textoCancelar = "Seguir revisando"
         ) {
-            Text("No se guardará ninguna. Los fragmentos quedan sin usar para crearlas otra vez.", style = MaterialTheme.typography.bodyMedium)
+            Text("No se guardará ninguna. Sus fragmentos quedan sin usar para crearlas otra vez.", style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

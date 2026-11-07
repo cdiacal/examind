@@ -18,7 +18,9 @@ data class TemarioConCuentas(
     val creadoEl: Long,
     val preguntasTemario: Int,
     val preguntasOnline: Int,
-    val fragmentosSinUsar: Int
+    val fragmentosSinUsar: Int,
+    /** Preguntas que ha escrito la IA y aún no se han revisado. */
+    val porRevisar: Int
 )
 
 /** Lo que el selector de preguntas necesita de cada una (ver nucleo.Candidata). */
@@ -58,7 +60,8 @@ interface TemarioDao {
         SELECT t.id, t.nombre, t.tema, t.paginas, t.creadoEl,
             (SELECT COUNT(*) FROM preguntas p WHERE p.temarioId = t.id AND p.origen = 'TEMARIO') AS preguntasTemario,
             (SELECT COUNT(*) FROM preguntas p WHERE p.temarioId = t.id AND p.origen = 'ONLINE') AS preguntasOnline,
-            (SELECT COUNT(*) FROM fragmentos f WHERE f.temarioId = t.id AND f.usado = 0) AS fragmentosSinUsar
+            (SELECT COUNT(*) FROM fragmentos f WHERE f.temarioId = t.id AND f.usado = 0) AS fragmentosSinUsar,
+            (SELECT COUNT(*) FROM borradores b WHERE b.temarioId = t.id) AS porRevisar
         FROM temarios t ORDER BY t.creadoEl DESC
         """
     )
@@ -124,4 +127,15 @@ interface TestDao {
     @Query("SELECT * FROM respuestas WHERE testId = :testId ORDER BY orden") suspend fun respuestas(testId: Long): List<RespuestaEntidad>
     @Query("SELECT * FROM respuestas ORDER BY testId, orden") suspend fun todasLasRespuestas(): List<RespuestaEntidad>
     @Query("SELECT * FROM respuestas WHERE preguntaId IN (:preguntaIds)") suspend fun respuestasDe(preguntaIds: List<Long>): List<RespuestaEntidad>
+}
+
+@Dao
+interface BorradorDao {
+    @Insert suspend fun insertar(borradores: List<BorradorEntidad>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertarConId(borradores: List<BorradorEntidad>)
+    @Delete suspend fun borrar(borradores: List<BorradorEntidad>)
+    @Query("SELECT * FROM borradores WHERE temarioId = :temarioId ORDER BY id") fun observar(temarioId: Long): Flow<List<BorradorEntidad>>
+    @Query("SELECT * FROM borradores WHERE temarioId = :temarioId ORDER BY id") suspend fun deTemario(temarioId: Long): List<BorradorEntidad>
+    @Query("SELECT huella FROM borradores WHERE temarioId = :temarioId") suspend fun huellas(temarioId: Long): List<String>
+    @Query("DELETE FROM borradores WHERE temarioId = :temarioId") suspend fun borrarDeTemario(temarioId: Long)
 }

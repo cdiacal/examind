@@ -29,6 +29,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,7 +71,7 @@ import kotlinx.coroutines.launch
 private enum class Pantalla { INICIO, TEST, ANADIR, TEMARIO, AJUSTES, GALERIA }
 
 @Composable
-fun AppExamind() {
+fun AppExamind(temarioPedido: Long? = null, onTemarioAbierto: () -> Unit = {}) {
     var pantalla by rememberSaveable { mutableStateOf(Pantalla.INICIO) }
     var temarioAbierto by rememberSaveable { mutableStateOf(0L) }
     val avisos = remember { SnackbarHostState() }
@@ -78,6 +79,15 @@ fun AppExamind() {
     val test: TestViewModel = viewModel()
     val importar: ImportarViewModel = viewModel()
     val temario: TemarioViewModel = viewModel()
+
+    // Al tocar la notificación de «preguntas listas», se abre ese temario
+    LaunchedEffect(temarioPedido) {
+        if (temarioPedido != null) {
+            temarioAbierto = temarioPedido
+            pantalla = Pantalla.TEMARIO
+            onTemarioAbierto()
+        }
+    }
     val alcance = rememberCoroutineScope()
 
     // Selector de archivos del sistema: PDF y Word
@@ -250,7 +260,8 @@ private fun FilaTemario(t: TemarioConCuentas, onClick: () -> Unit) {
         titulo = t.nombre,
         importe = Formato.cantidad(total, "pregunta"),
         colorImporte = MaterialTheme.colorScheme.onSurfaceVariant,
-        subtitulo = "Del temario: ${Formato.miles(t.preguntasTemario.toLong())} · Online: ${Formato.miles(t.preguntasOnline.toLong())}",
+        subtitulo = "Del temario: ${Formato.miles(t.preguntasTemario.toLong())} · Online: ${Formato.miles(t.preguntasOnline.toLong())}" +
+            if (t.porRevisar > 0) " · ${t.porRevisar} por revisar" else "",
         icono = { IconoInicial(t.nombre, t.id) },
         onClick = onClick
     )

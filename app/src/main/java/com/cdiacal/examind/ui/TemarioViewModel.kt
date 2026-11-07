@@ -10,16 +10,13 @@ import com.cdiacal.examind.datos.PreguntaEntidad
 import com.cdiacal.examind.datos.RespuestaEntidad
 import com.cdiacal.examind.datos.TemarioConCuentas
 import com.cdiacal.examind.datos.aEntidad
+import com.cdiacal.examind.datos.BorradorEntidad
+import com.cdiacal.examind.datos.aNueva
 import com.cdiacal.examind.ia.GestorIA
-import com.cdiacal.examind.ia.MotorNoDisponible
-import com.cdiacal.examind.nucleo.Avance
-import com.cdiacal.examind.nucleo.Formato
-import com.cdiacal.examind.nucleo.Fragmento
-import com.cdiacal.examind.nucleo.GeneradorPreguntas
-import com.cdiacal.examind.nucleo.PreguntaNueva
-import com.cdiacal.examind.nucleo.ResultadoGeneracion
+import com.cdiacal.examind.segundoplano.TrabajoGenerar
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,25 +25,20 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** Crear preguntas con la IA: preparando el motor, generando, revisando lo generado o un error. */
-sealed interface EstadoGeneracion {
-    data object Inactivo : EstadoGeneracion
-    data object CargandoMotor : EstadoGeneracion
-    data class Generando(val motor: String, val avance: Avance) : EstadoGeneracion
-    data class Revisando(
-        val preguntas: List<PreguntaNueva>,
-        val seleccion: Set<Int>,
-        val fragmentoIds: List<Long>,
-        val resumen: String
-    ) : EstadoGeneracion
-    data class Error(val mensaje: String) : EstadoGeneracion
+/** Cómo va la creación de preguntas en segundo plano para este temario. */
+sealed interface EstadoTrabajo {
+    data object Inactivo : EstadoTrabajo
+    /** Esperando a que termine otro temario (la IA hace uno cada vez). */
+    data object EnCola : EstadoTrabajo
+    data class Generando(val motor: String?, val hechos: Int, val total: Int, val nuevas: Int) : EstadoTrabajo
 }
 
-/** Lo que se acaba de guardar, para poder deshacerlo. */
-data class PreguntasGuardadas(val ids: List<Long>, val fragmentoIds: List<Long>)
+/** Lo que se acaba de guardar al revisar, para poder deshacerlo (vuelven a ser borradores). */
+data class PreguntasGuardadas(val ids: List<Long>, val borradores: List<BorradorEntidad>, val fragmentosDevueltos: List<Long>)
 
 /** Lo que se acaba de borrar, para poder deshacerlo. */
 data class PreguntasBorradas(val preguntas: List<PreguntaEntidad>, val respuestas: List<RespuestaEntidad>)
@@ -69,102 +61,121 @@ class TemarioViewModel(app: Application) : AndroidViewModel(app) {
     val delTemario = observar("TEMARIO").stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val online = observar("ONLINE").stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val _generacion = MutableStateFlow<EstadoGeneracion>(EstadoGeneracion.Inactivo)
-    val generacion: StateFlow<EstadoGeneracion> = _generacion.asStateFlow()
-    private var trabajo: Job? = null
+    /** Preguntas que ha escrito la IA y faltan por revisar. */
+    val borradores: StateFlow<List<BorradorEntidad>> =
+        temarioId.flatMapLatest { id -> if (id == null) flowOf(emptyList()) else bd.borradores().observar(id) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** El trabajo en segundo plano de este temario, si hay uno en marcha o en cola. */
+    val trabajo: StateFlow<EstadoTrabajo> = temarioId.flatMapLatest { id ->
+        if (id == null) flowOf(emptyList())
+        else WorkManager.getInstance(getApplication()).getWorkInfosByTagFlow(TrabajoGenerar.etiqueta(id))
+    }.map { infos ->
+        val enMarcha = infos.firstOrNull { it.state == WorkInfo.State.RUNNING }
+        when {
+            enMarcha != null -> enMarcha.progress.let { d ->
+                EstadoTrabajo.Generando(
+                    d.getString(TrabajoGenerar.MOTOR),
+                    d.getInt(TrabajoGenerar.HECHOS, 0),
+                    d.getInt(TrabajoGenerar.TOTAL, 0),
+                    d.getInt(TrabajoGenerar.NUEVAS, 0)
+                )
+            }
+            infos.any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED } -> EstadoTrabajo.EnCola
+            else -> EstadoTrabajo.Inactivo
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EstadoTrabajo.Inactivo)
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    private val _revisando = MutableStateFlow(false)
+    /** true mientras se está en la pantalla de revisar los borradores. */
+    val revisando: StateFlow<Boolean> = _revisando.asStateFlow()
+
+    private val _desmarcados = MutableStateFlow(setOf<Long>())
+    /** Borradores que el usuario ha desmarcado (por defecto se guardan todos). */
+    val desmarcados: StateFlow<Set<Long>> = _desmarcados.asStateFlow()
 
     fun abrir(id: Long) {
         if (temarioId.value != id) {
-            trabajo?.cancel()
-            _generacion.value = EstadoGeneracion.Inactivo
+            _revisando.value = false
+            _desmarcados.value = emptySet()
+            _error.value = null
         }
         temarioId.value = id
     }
 
-    /** Crea preguntas con los siguientes [cuantos] fragmentos sin usar del temario. */
+    /** Lanza la creación de preguntas en segundo plano con los siguientes [cuantos] fragmentos sin usar. */
     fun generar(cuantos: Int) {
         val id = temarioId.value ?: return
-        trabajo?.cancel()
-        trabajo = viewModelScope.launch {
-            _generacion.value = EstadoGeneracion.CargandoMotor
-            val fragmentos = bd.temarios().fragmentosSinUsar(id, cuantos)
-            if (fragmentos.isEmpty()) {
-                _generacion.value = EstadoGeneracion.Error("Ya se han usado todos los fragmentos del temario. Para tener más preguntas, busca exámenes online.")
+        viewModelScope.launch {
+            _error.value = null
+            if (gestor.eleccion() == null) {
+                _error.value = "Aún no hay IA en el móvil. Ve a Ajustes → IA del móvil y descarga un modelo."
                 return@launch
             }
-            val motor = try {
-                gestor.abrir()
-            } catch (e: MotorNoDisponible) {
-                _generacion.value = EstadoGeneracion.Error(e.message ?: "No hay IA disponible.")
-                return@launch
-            }
-            val resultado: ResultadoGeneracion = try {
-                GeneradorPreguntas(motor).generar(
-                    fragmentos.map { Fragmento(it.pagina, it.texto) },
-                    bd.preguntas().huellas(id).toSet()
-                ) { avance -> _generacion.value = EstadoGeneracion.Generando(motor.nombre, avance) }
-            } finally {
-                motor.close()
-            }
-
-            val p = resultado.preguntas
-            _generacion.value = if (p.isEmpty()) {
-                EstadoGeneracion.Error(
-                    "La IA no ha devuelto preguntas válidas" +
-                        (resultado.ultimoError?.let { " (${it.message ?: it.javaClass.simpleName})" } ?: "") +
-                        ". Vuelve a intentarlo o prueba con otro modelo en Ajustes."
-                )
-            } else {
-                val partes = buildList {
-                    add("${Formato.cantidad(p.size, "pregunta nueva", "preguntas nuevas")} de ${Formato.cantidad(fragmentos.size, "fragmento")}")
-                    if (resultado.duplicadas > 0) add("${resultado.duplicadas} repetidas no se muestran")
-                    if (resultado.descartadas > 0) add("${resultado.descartadas} mal formadas descartadas")
-                }
-                EstadoGeneracion.Revisando(p, p.indices.toSet(), fragmentos.map { it.id }, partes.joinToString(" · "))
-            }
+            TrabajoGenerar.lanzar(getApplication(), id, cuantos)
         }
     }
 
     fun cancelarGeneracion() {
-        trabajo?.cancel()
-        _generacion.value = EstadoGeneracion.Inactivo
+        temarioId.value?.let { TrabajoGenerar.cancelar(getApplication(), it) }
     }
 
-    fun alternar(indice: Int) {
-        val r = _generacion.value as? EstadoGeneracion.Revisando ?: return
-        _generacion.value = r.copy(seleccion = if (indice in r.seleccion) r.seleccion - indice else r.seleccion + indice)
+    fun empezarRevision() { _desmarcados.value = emptySet(); _revisando.value = true }
+    fun salirRevision() { _revisando.value = false }
+
+    fun alternar(id: Long) {
+        _desmarcados.value = _desmarcados.value.let { if (id in it) it - id else it + id }
     }
 
     fun seleccionarTodas(todas: Boolean) {
-        val r = _generacion.value as? EstadoGeneracion.Revisando ?: return
-        _generacion.value = r.copy(seleccion = if (todas) r.preguntas.indices.toSet() else emptySet())
+        _desmarcados.value = if (todas) emptySet() else borradores.value.map { it.id }.toSet()
     }
 
-    /** Guarda las preguntas elegidas (sin duplicados) y marca los fragmentos como usados. */
-    fun guardarRevisadas(alTerminar: (PreguntasGuardadas, Int) -> Unit) {
-        val r = _generacion.value as? EstadoGeneracion.Revisando ?: return
+    /**
+     * Guarda los borradores marcados de [revisados] (los que se veían en pantalla) como preguntas, sin duplicados, y
+     * quita todos ellos de pendientes. Los fragmentos de los que no se ha guardado nada vuelven a «sin usar».
+     */
+    fun guardarRevisadas(revisados: List<BorradorEntidad>, alTerminar: (PreguntasGuardadas, Int) -> Unit) {
         val id = temarioId.value ?: return
+        val quitados = _desmarcados.value
         viewModelScope.launch {
+            val elegidos = revisados.filter { it.id !in quitados }
+            val fragmentosConGuardadas = elegidos.map { it.fragmentoId }.toSet()
+            val devueltos = revisados.map { it.fragmentoId }.distinct().filter { it !in fragmentosConGuardadas }
             val ahora = System.currentTimeMillis()
-            val elegidas = r.preguntas.filterIndexed { i, _ -> i in r.seleccion }
             val ids = bd.withTransaction {
-                val insertadas = bd.preguntas().insertar(elegidas.mapIndexed { i, p -> p.aEntidad(id, ahora + i) }).filter { it > 0 }
-                bd.temarios().marcarUsados(r.fragmentoIds)
+                val insertadas = bd.preguntas().insertar(elegidos.mapIndexed { i, b -> b.aNueva().aEntidad(id, ahora + i) }).filter { it > 0 }
+                bd.borradores().borrar(revisados)
+                bd.temarios().desmarcarUsados(devueltos)
                 insertadas
             }
-            _generacion.value = EstadoGeneracion.Inactivo
-            alTerminar(PreguntasGuardadas(ids, r.fragmentoIds), ids.size)
+            _revisando.value = false
+            _desmarcados.value = emptySet()
+            alTerminar(PreguntasGuardadas(ids, revisados, devueltos), ids.size)
         }
     }
 
-    /** Descarta lo generado sin guardar (los fragmentos quedan sin usar para otra vez). */
-    fun descartar() { _generacion.value = EstadoGeneracion.Inactivo }
+    /** Descarta todos los borradores que se veían: no se guarda ninguno y sus fragmentos vuelven a «sin usar». */
+    fun descartar(revisados: List<BorradorEntidad>) {
+        viewModelScope.launch {
+            bd.withTransaction {
+                bd.borradores().borrar(revisados)
+                bd.temarios().desmarcarUsados(revisados.map { it.fragmentoId }.distinct())
+            }
+            _revisando.value = false
+        }
+    }
 
+    /** Deshace el guardado: quita las preguntas guardadas y deja otra vez los borradores pendientes de revisar. */
     fun deshacerGuardado(g: PreguntasGuardadas) {
         viewModelScope.launch {
             bd.withTransaction {
                 bd.preguntas().borrarPorIds(g.ids)
-                bd.temarios().desmarcarUsados(g.fragmentoIds)
+                bd.borradores().insertarConId(g.borradores)
+                bd.temarios().marcarUsados(g.fragmentosDevueltos)
             }
         }
     }
@@ -194,6 +205,7 @@ class TemarioViewModel(app: Application) : AndroidViewModel(app) {
     /** Borra el temario con sus preguntas y su PDF. Los tests hechos se quedan en el historial. */
     fun borrarTemario(alTerminar: () -> Unit) {
         val id = temarioId.value ?: return
+        TrabajoGenerar.cancelar(getApplication(), id)
         viewModelScope.launch {
             bd.temarios().porId(id)?.let {
                 bd.temarios().borrar(it)
