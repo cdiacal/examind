@@ -28,7 +28,7 @@ jobs:
           gradle-version: '8.9'
 
       - name: Pruebas unitarias
-        run: gradle testDebugUnitTest
+        run: gradle :nucleo:test testDebugUnitTest
 
       - name: Compilar APK (debug)
         run: gradle assembleDebug
@@ -38,3 +38,11 @@ jobs:
         with:
           name: Examind-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      # Esquema de la base de datos generado por Room, para guardarlo en el repositorio
+      - name: Subir el esquema de la base de datos
+        uses: actions/upload-artifact@v4
+        with:
+          name: esquema-bd
+          path: app/schemas
+          if-no-files-found: ignore

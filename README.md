@@ -9,7 +9,7 @@ Pensada para estudiantes de universidad. Todo se guarda en el móvil, sin cuenta
 | Paso | Estado |
 |---|---|
 | Esqueleto con el tema (claro, oscuro y según el sistema) y la galería de estilo | Hecho: compila en GitHub Actions |
-| Modelo de datos (Room) y pruebas | Pendiente |
+| Modelo de datos (Room) y pruebas | Hecho: compila y pasan las pruebas |
 | Pantalla de inicio | Pendiente |
 | Añadir temario PDF y generar preguntas (IA en el móvil) | Pendiente |
 | Hacer test y resultado | Pendiente |
@@ -22,9 +22,31 @@ Pensada para estudiantes de universidad. Todo se guarda en el móvil, sin cuenta
 - Ajustes: tema según el sistema, claro u oscuro (se aplica al instante y se recuerda).
 - Ajustes → «Ver galería de estilo»: todos los componentes, para revisar el modo claro y el oscuro.
 
+## Datos (todo en el móvil)
+
+- **Temarios**: nombre, tema para buscar online, copia del PDF y nº de páginas.
+- **Fragmentos**: el texto del PDF limpio y troceado, con su página (sirve para generar preguntas y citar la página).
+- **Preguntas**: enunciado, 4 opciones, la correcta, explicación, origen (temario u online), página o fuente
+  (título, enlace y fecha de consulta) y una huella para no guardar duplicados.
+- **Tests y respuestas**: fecha, aciertos, fallos, en blanco, nota, duración y qué se contestó en cada pregunta.
+
+Base de datos Room con migraciones explícitas: al actualizar nunca se borran datos. El esquema de cada versión está
+en `app/schemas`.
+
+## Código
+
+- `nucleo/`: lógica pura sin Android, con pruebas: limpieza y troceado del texto del PDF, lectura de las preguntas
+  que devuelve la IA (tolerante a respuestas cortadas o mal formadas), duplicados, puntuación, selección de preguntas
+  para un test, formatos en español, CSV y formato de la copia de seguridad.
+- `app/`: interfaz (Compose) y base de datos (Room).
+- `plantilla-estilo/`: el estilo compartido con Ceca.
+
 ## Decisiones
 
-- **IA en el móvil**: las preguntas se generan con un modelo que se ejecuta en el propio teléfono (sin claves ni servidor).
+- **IA en el móvil**: las preguntas se generan con un modelo que se ejecuta en el propio teléfono (sin claves ni servidor):
+  Gemini Nano donde el sistema lo ofrece y, si no, un modelo Gemma que se descarga una vez.
+- **Exámenes online**: la app busca exámenes de universidad en internet, descarga la página o el PDF y el modelo del
+  móvil saca las preguntas, guardando el enlace como fuente. Si la búsqueda falla, se puede pegar un enlace a mano.
 - **Universidad**: 4 opciones por pregunta, una correcta, sin penalización por fallo.
 
 ## Estilo
@@ -37,4 +59,4 @@ Para cambiar de marca, cambia solo los colores de identidad en `plantilla-estilo
 GitHub Actions (`.github/workflows/build-apk.yml`) pasa las pruebas y compila el APK de depuración en cada push.
 El APK queda como artefacto «Examind-debug» en la ejecución del flujo.
 
-En local: `gradle testDebugUnitTest assembleDebug` (Gradle 8.9, JDK 17 y el SDK de Android 34).
+En local: `gradle :nucleo:test testDebugUnitTest assembleDebug` (Gradle 8.9, JDK 17 y el SDK de Android 34).
