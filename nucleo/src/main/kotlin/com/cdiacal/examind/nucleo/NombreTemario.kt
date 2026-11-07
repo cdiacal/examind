@@ -4,11 +4,11 @@ package com.cdiacal.examind.nucleo
 object NombreTemario {
 
     /**
-     * Nombre legible a partir del nombre del archivo: sin «.pdf», guiones bajos como espacios, sin espacios dobles
+     * Nombre legible a partir del nombre del archivo: sin «.pdf» ni «.docx», guiones bajos como espacios, sin espacios dobles
      * y con la primera letra en mayúscula. «tema_3__la_célula.pdf» → «Tema 3 la célula».
      */
     fun desdeArchivo(archivo: String?): String {
-        val base = archivo.orEmpty().substringAfterLast('/').replace(Regex("(?i)\\.pdf$"), "")
+        val base = archivo.orEmpty().substringAfterLast('/').replace(Regex("(?i)\\.(pdf|docx?)$"), "")
         val limpio = base.replace('_', ' ').replace(Regex("\\s+"), " ").trim()
         if (limpio.isEmpty()) return "Temario sin nombre"
         return limpio.replaceFirstChar { it.uppercase() }.take(80)

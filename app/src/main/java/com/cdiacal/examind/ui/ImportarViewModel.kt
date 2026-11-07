@@ -6,8 +6,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.cdiacal.examind.datos.BaseDatos
 import com.cdiacal.examind.datos.FragmentoEntidad
-import com.cdiacal.examind.datos.LectorPdf
-import com.cdiacal.examind.datos.PdfNoLegible
+import com.cdiacal.examind.datos.DocumentoNoLegible
+import com.cdiacal.examind.datos.LectorTemario
 import com.cdiacal.examind.datos.TemarioEntidad
 import com.cdiacal.examind.nucleo.Fragmento
 import com.cdiacal.examind.nucleo.NombreTemario
@@ -25,7 +25,9 @@ sealed interface EstadoImportar {
         val archivo: String,
         val huella: String,
         val nombre: String,
+        /** Páginas del documento; 0 si es un Word sin marcas de página. */
         val paginas: Int,
+        val tipo: String,
         val conTexto: Boolean,
         val fragmentos: List<Fragmento>
     ) : EstadoImportar
@@ -37,7 +39,7 @@ data class TemarioGuardado(val id: Long, val nombre: String, val archivo: String
 
 class ImportarViewModel(app: Application) : AndroidViewModel(app) {
     private val bd = BaseDatos.obtener(app)
-    private val lector = LectorPdf(app)
+    private val lector = LectorTemario(app)
 
     private val _estado = MutableStateFlow<EstadoImportar>(EstadoImportar.Inactivo)
     val estado: StateFlow<EstadoImportar> = _estado.asStateFlow()
@@ -52,7 +54,7 @@ class ImportarViewModel(app: Application) : AndroidViewModel(app) {
                 val existente = bd.temarios().porHuellaArchivo(pdf.huella)
                 if (existente != null) {
                     lector.borrar(pdf.archivo)
-                    EstadoImportar.Error("Este PDF ya está añadido como «${existente.nombre}». No hace falta añadirlo otra vez.")
+                    EstadoImportar.Error("Este documento ya está añadido como «${existente.nombre}». No hace falta añadirlo otra vez.")
                 } else {
                     val limpias = Troceador.limpiarPaginas(pdf.paginas)
                     val nombre = NombreTemario.unico(NombreTemario.desdeArchivo(pdf.nombreOriginal), bd.temarios().nombres())
@@ -60,17 +62,19 @@ class ImportarViewModel(app: Application) : AndroidViewModel(app) {
                         archivo = pdf.archivo,
                         huella = pdf.huella,
                         nombre = nombre,
-                        paginas = pdf.paginas.size,
+                        paginas = if (pdf.conPaginas) pdf.paginas.size else 0,
+                        tipo = pdf.tipo,
                         conTexto = Troceador.tieneTexto(limpias),
-                        fragmentos = Troceador.trocear(limpias)
+                        // Sin páginas, los fragmentos van con página 0 y las preguntas no citarán ninguna
+                        fragmentos = Troceador.trocear(limpias).map { if (pdf.conPaginas) it else it.copy(pagina = 0) }
                     )
                 }
-            } catch (e: PdfNoLegible) {
-                EstadoImportar.Error(e.message ?: "No se pudo leer el PDF.")
+            } catch (e: DocumentoNoLegible) {
+                EstadoImportar.Error(e.message ?: "No se pudo leer el documento.")
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Throwable) {
-                EstadoImportar.Error("No se pudo leer el PDF (${e.javaClass.simpleName}). Prueba con otro archivo.")
+                EstadoImportar.Error("No se pudo leer el documento (${e.javaClass.simpleName}). Prueba con otro archivo.")
             }
         }
     }
@@ -96,7 +100,7 @@ class ImportarViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Deshace el guardado: borra el temario (y sus fragmentos) y la copia del PDF. */
+    /** Deshace el guardado: borra el temario (y sus fragmentos) y la copia del documento. */
     fun deshacer(guardado: TemarioGuardado) {
         viewModelScope.launch {
             bd.temarios().porId(guardado.id)?.let { bd.temarios().borrar(it) }
@@ -104,7 +108,7 @@ class ImportarViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Cierra la importación sin guardar y borra la copia del PDF si la había. */
+    /** Cierra la importación sin guardar y borra la copia del documento si la había. */
     fun cancelar() {
         lectura?.cancel()
         (_estado.value as? EstadoImportar.VistaPrevia)?.let { lector.borrar(it.archivo) }

@@ -33,6 +33,15 @@ class GeneradorPreguntasTest {
         assertEquals(Avance(0, 2, 0), avances.first())
     }
 
+    @Test fun sinPaginaNoSeInventaUna() = runBlocking {
+        val conPaginaInventada = """[{"pregunta": "Pregunta sin página", "opciones": ["a", "b", "c", "d"], "correcta": 0, "pagina": 12}]"""
+        var prompt = ""
+        val r = GeneradorPreguntas({ prompt = it; conPaginaInventada }).generar(listOf(Fragmento(0, "Texto de un Word")), emptySet())
+        assertNull(r.preguntas.single().pagina)
+        assertTrue(prompt.contains("TEXTO:\n"))
+        assertTrue(!prompt.contains("página 0"))
+    }
+
     @Test fun noRepiteLasYaGuardadas() = runBlocking {
         val guardada = PreguntaNueva("Pregunta A", listOf("uno", "dos", "tres", "cuatro"), 1).huella
         val r = GeneradorPreguntas({ json("Pregunta A", "Pregunta B") }).generar(listOf(Fragmento(1, "x")), setOf(guardada))

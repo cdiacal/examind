@@ -26,7 +26,7 @@ Reglas:
 Responde solo con una lista JSON, sin nada antes ni después, con este formato:
 [{"pregunta": "...", "opciones": ["...", "...", "...", "..."], "correcta": 0, "explicacion": "..."}]
 
-TEXTO (página $pagina):
+${if (pagina > 0) "TEXTO (página $pagina):" else "TEXTO:"}
 ""${'"'}
 ${texto.trim()}
 ""${'"'}
@@ -79,10 +79,12 @@ class GeneradorPreguntas(private val motor: MotorTexto, private val porFragmento
             if (respuesta == null) {
                 fallidos++
             } else {
-                val leido = LectorRespuestaIA.leer(respuesta, origen = Origen.TEMARIO, paginaPorDefecto = fragmento.pagina)
+                val leido = LectorRespuestaIA.leer(respuesta, origen = Origen.TEMARIO)
                 descartadas += leido.descartadas
                 if (leido.vacio) fallidos++
-                val separacion = separarDuplicadas(leido.preguntas, huellas)
+                // La página es siempre la del fragmento (0 = sin página): el modelo no la sabe y podría inventarla
+                val conPagina = leido.preguntas.map { it.copy(pagina = fragmento.pagina.takeIf { p -> p > 0 }) }
+                val separacion = separarDuplicadas(conPagina, huellas)
                 duplicadas += separacion.duplicadas.size
                 separacion.nuevas.forEach { huellas += it.huella }
                 nuevas += separacion.nuevas

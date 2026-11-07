@@ -51,18 +51,18 @@ fun PantallaAnadirTemario(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        CabeceraSimple(titulo = "Añadir temario", subtitulo = "Desde un PDF", onVolver = { vm.cancelar(); onSalir() })
+        CabeceraSimple(titulo = "Añadir temario", subtitulo = "Desde un PDF o un Word (.docx)", onVolver = { vm.cancelar(); onSalir() })
 
         when (val e = estado) {
             EstadoImportar.Inactivo -> TarjetaPanel {
-                Text("Elige un PDF con el temario para empezar.", style = MaterialTheme.typography.bodyMedium)
+                Text("Elige el temario en PDF o en Word (.docx) para empezar.", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(12.dp))
-                BotonPrincipal("Elegir PDF", onClick = onElegirOtro)
+                BotonPrincipal("Elegir archivo", onClick = onElegirOtro)
             }
 
             is EstadoImportar.Leyendo -> TarjetaPanel {
                 Text(
-                    if (e.total == 0) "Copiando el PDF…" else "Leyendo la página ${e.pagina} de ${e.total}…",
+                    if (e.total == 0) "Leyendo el documento…" else "Leyendo la página ${e.pagina} de ${e.total}…",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(Modifier.height(12.dp))
@@ -74,7 +74,7 @@ fun PantallaAnadirTemario(
             is EstadoImportar.Error -> TarjetaPanel {
                 Text(e.mensaje, style = MaterialTheme.typography.bodyMedium, color = colorGasto())
                 Spacer(Modifier.height(12.dp))
-                BotonPrincipal("Elegir otro PDF", onClick = onElegirOtro)
+                BotonPrincipal("Elegir otro archivo", onClick = onElegirOtro)
             }
 
             is EstadoImportar.VistaPrevia -> VistaPrevia(vm, e, onElegirOtro, onGuardado)
@@ -94,8 +94,8 @@ private fun VistaPrevia(
     val caracteres = e.fragmentos.sumOf { it.texto.length }
 
     TarjetaDestacada(
-        titulo = "Páginas del PDF",
-        cifra = Formato.miles(e.paginas.toLong()),
+        titulo = if (e.paginas > 0) "Páginas del ${e.tipo}" else "Documento de ${e.tipo}",
+        cifra = if (e.paginas > 0) Formato.miles(e.paginas.toLong()) else Formato.cantidad(e.fragmentos.size, "fragmento"),
         detalle = if (e.conTexto) "${Formato.cantidad(e.fragmentos.size, "fragmento")} de texto para crear preguntas · ${Formato.miles(caracteres.toLong())} caracteres"
         else "Sin texto que se pueda leer",
         colorDetalle = if (e.conTexto) MaterialTheme.colorScheme.onPrimaryContainer else colorAviso()
@@ -103,14 +103,19 @@ private fun VistaPrevia(
 
     if (!e.conTexto) {
         TarjetaPanel {
-            Text("⚠ Este PDF parece escaneado", style = MaterialTheme.typography.titleMedium, color = colorAviso())
+            Text(
+                if (e.tipo == "PDF") "⚠ Este PDF parece escaneado" else "⚠ Este documento casi no tiene texto",
+                style = MaterialTheme.typography.titleMedium,
+                color = colorAviso()
+            )
             Spacer(Modifier.height(4.dp))
             Text(
-                "Sus páginas son imágenes y no tienen texto que se pueda leer. Prueba con un PDF en el que se pueda seleccionar el texto (por ejemplo, exportado desde Word o Google Docs).",
+                if (e.tipo == "PDF") "Sus páginas son imágenes y no tienen texto que se pueda leer. Prueba con un PDF en el que se pueda seleccionar el texto (por ejemplo, exportado desde Word o Google Docs)."
+                else "No hay texto suficiente para crear preguntas. Si el contenido está en imágenes, no se puede leer.",
                 style = MaterialTheme.typography.bodyMedium
             )
             Spacer(Modifier.height(12.dp))
-            BotonPrincipal("Elegir otro PDF", onClick = { vm.cancelar(); onElegirOtro() })
+            BotonPrincipal("Elegir otro archivo", onClick = { vm.cancelar(); onElegirOtro() })
         }
         return
     }
@@ -134,10 +139,19 @@ private fun VistaPrevia(
         )
     }
 
+    if (e.paginas == 0) {
+        Text(
+            "Este Word no guarda dónde empieza cada página, así que las preguntas no llevarán número de página.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+
     TarjetaPanel {
         Text("Así se lee el texto", style = MaterialTheme.typography.titleMedium)
         Text(
-            "Primer fragmento, página ${e.fragmentos.first().pagina}. Si ves letras raras, el PDF puede tener un formato que no se lee bien.",
+            (if (e.fragmentos.first().pagina > 0) "Primer fragmento, página ${e.fragmentos.first().pagina}." else "Primer fragmento.") +
+                " Si ves letras raras, el documento puede tener un formato que no se lee bien.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -148,7 +162,7 @@ private fun VistaPrevia(
     BotonPrincipal("Guardar temario", Modifier.fillMaxWidth(), habilitado = nombre.isNotBlank()) {
         vm.guardar(nombre, tema, onGuardado)
     }
-    BotonSecundario("Elegir otro PDF", Modifier.fillMaxWidth(), onClick = { vm.cancelar(); onElegirOtro() })
+    BotonSecundario("Elegir otro archivo", Modifier.fillMaxWidth(), onClick = { vm.cancelar(); onElegirOtro() })
     Text(
         "Después podrás crear las preguntas con la IA del móvil desde el temario.",
         style = MaterialTheme.typography.bodySmall,

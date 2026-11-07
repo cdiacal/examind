@@ -7,6 +7,7 @@ class NombreTemarioTest {
     @Test fun desdeArchivo() {
         assertEquals("Tema 3 la célula", NombreTemario.desdeArchivo("tema_3__la_célula.PDF"))
         assertEquals("Apuntes", NombreTemario.desdeArchivo("/storage/emulated/0/Download/apuntes.pdf"))
+        assertEquals("Apuntes tema 2", NombreTemario.desdeArchivo("apuntes_tema_2.docx"))
         assertEquals("Temario sin nombre", NombreTemario.desdeArchivo(null))
         assertEquals("Temario sin nombre", NombreTemario.desdeArchivo(".pdf"))
     }

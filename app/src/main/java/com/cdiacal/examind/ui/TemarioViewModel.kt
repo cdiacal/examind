@@ -5,7 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
 import com.cdiacal.examind.datos.BaseDatos
-import com.cdiacal.examind.datos.LectorPdf
+import com.cdiacal.examind.datos.LectorTemario
 import com.cdiacal.examind.datos.PreguntaEntidad
 import com.cdiacal.examind.datos.RespuestaEntidad
 import com.cdiacal.examind.datos.TemarioConCuentas
@@ -55,7 +55,7 @@ data class PreguntasBorradas(val preguntas: List<PreguntaEntidad>, val respuesta
 class TemarioViewModel(app: Application) : AndroidViewModel(app) {
     private val bd = BaseDatos.obtener(app)
     private val gestor = GestorIA(app)
-    private val lector = LectorPdf(app)
+    private val lector = LectorTemario(app)
 
     private val temarioId = MutableStateFlow<Long?>(null)
 

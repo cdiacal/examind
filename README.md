@@ -11,7 +11,7 @@ Pensada para estudiantes de universidad. Todo se guarda en el móvil, sin cuenta
 | Esqueleto con el tema (claro, oscuro y según el sistema) y la galería de estilo | Hecho: compila en GitHub Actions |
 | Modelo de datos (Room) y pruebas | Hecho: compila y pasan las pruebas |
 | Pantalla de inicio | Hecho: compila y pasan las pruebas |
-| Añadir temario PDF | Hecho: compila y pasan las pruebas |
+| Añadir temario PDF o Word (.docx) | Hecho: compila y pasan las pruebas |
 | IA del móvil (Gemini Nano o modelo descargable) | Hecho: compila y pasan las pruebas |
 | Generar preguntas desde el temario | Hecho: compila y pasan las pruebas |
 | Hacer test y resultado | Hecho: compila y pasan las pruebas |
@@ -23,10 +23,11 @@ Pensada para estudiantes de universidad. Todo se guarda en el móvil, sin cuenta
 - Inicio: % de aciertos de tus últimos 20 tests en grande, cuántos temarios, preguntas y tests llevas, tus temarios
   (con sus preguntas del temario y online) y tus 5 últimos tests con su nota y calificación (Suspenso, Aprobado,
   Notable, Sobresaliente).
-- Añadir temario (botón +): eliges un PDF, la app lo copia, lee el texto de cada página y enseña una vista previa
+- Añadir temario (botón +): eliges un PDF o un Word (.docx), la app lo copia, lee el texto de cada página y enseña una vista previa
   (páginas, fragmentos de texto, cómo se lee) para ponerle nombre y el tema que se buscará online. Quita cabeceras,
-  pies y números de página. Avisa si el PDF es escaneado (sin texto) o tiene contraseña, y no deja añadir dos veces
-  el mismo PDF. Tras guardar, «Deshacer», y se abre el temario.
+  pies y números de página. En los Word, las páginas salen de las marcas que guarda Word; si no las hay, las
+  preguntas no llevan página. Avisa si el PDF es escaneado (sin texto) o tiene contraseña, si es un .doc antiguo
+  (hay que guardarlo como .docx o PDF), y no deja añadir dos veces el mismo documento. Tras guardar, «Deshacer», y se abre el temario.
 - Temario (tocar uno en el inicio): cuántas preguntas tiene, «Crear preguntas con la IA» con los siguientes 5, 10,
   20 o todos los fragmentos sin usar (unas 3 preguntas por fragmento), con progreso y cancelar. Después se revisan
   todas (opciones, la correcta con «✓ Correcta», explicación y página) y se guardan las marcadas, sin duplicados;
@@ -64,7 +65,7 @@ repositorio. Migraciones: 1 → 2 (huella del PDF en cada temario).
 
 ## Código
 
-- `nucleo/`: lógica pura sin Android, con pruebas: limpieza y troceado del texto del PDF, lectura de las preguntas
+- `nucleo/`: lógica pura sin Android, con pruebas: limpieza y troceado del texto del PDF, lectura del texto de los Word (.docx), lectura de las preguntas
   que devuelve la IA (tolerante a respuestas cortadas o mal formadas), duplicados, puntuación, selección de preguntas
   para un test, formatos en español, CSV y formato de la copia de seguridad.
 - `app/`: interfaz (Compose) y base de datos (Room).

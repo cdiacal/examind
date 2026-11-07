@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.cdiacal.examind.datos.TIPOS_TEMARIO
 import com.cdiacal.examind.datos.TemarioConCuentas
 import com.cdiacal.examind.datos.TestEntidad
 import com.cdiacal.examind.estilo.BotonPrincipal
@@ -79,14 +80,14 @@ fun AppExamind() {
     val temario: TemarioViewModel = viewModel()
     val alcance = rememberCoroutineScope()
 
-    // Selector de archivos del sistema, solo PDF
+    // Selector de archivos del sistema: PDF y Word
     val elegirPdf = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             importar.leer(uri)
             pantalla = Pantalla.ANADIR
         }
     }
-    val abrirSelector = { elegirPdf.launch(arrayOf("application/pdf")) }
+    val abrirSelector = { elegirPdf.launch(TIPOS_TEMARIO) }
 
     // El flujo del test gestiona su propio «atrás» (pregunta antes de salir de un test a medias)
     BackHandler(enabled = pantalla == Pantalla.AJUSTES || pantalla == Pantalla.GALERIA) {
@@ -210,7 +211,7 @@ private fun PantallaInicio(
                 TarjetaPanel {
                     Text("Tus temarios", style = MaterialTheme.typography.titleMedium)
                     if (e.temarios.isEmpty()) {
-                        EstadoVacio("Aún no tienes temarios.\nToca el botón + para añadir un PDF y crear tus primeras preguntas.")
+                        EstadoVacio("Aún no tienes temarios.\nToca el botón + para añadir un PDF o un Word y crear tus primeras preguntas.")
                     } else {
                         e.temarios.forEach { t -> FilaTemario(t) { onAbrirTemario(t.id) } }
                     }

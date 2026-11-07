@@ -1,6 +1,9 @@
 package com.cdiacal.examind.nucleo
 
-/** Un trozo del temario, del tamaño adecuado para pedirle preguntas a la IA. [pagina] es donde empieza (desde 1). */
+/**
+ * Un trozo del temario, del tamaño adecuado para pedirle preguntas a la IA. [pagina] es donde empieza (desde 1);
+ * 0 si el documento no tiene páginas (un Word sin marcas de página).
+ */
 data class Fragmento(val pagina: Int, val texto: String)
 
 /**
