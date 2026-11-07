@@ -40,6 +40,7 @@ interface TemarioDao {
 
     @Query("SELECT * FROM temarios WHERE id = :id") suspend fun porId(id: Long): TemarioEntidad?
     @Query("SELECT * FROM temarios ORDER BY creadoEl") suspend fun todos(): List<TemarioEntidad>
+    @Query("SELECT COUNT(*) FROM temarios WHERE nombre = :nombre") suspend fun contarLlamados(nombre: String): Int
 
     @Query(
         """
@@ -94,6 +95,7 @@ interface TestDao {
     @Insert suspend fun insertarTodos(tests: List<TestEntidad>)
     @Insert suspend fun insertarRespuestas(respuestas: List<RespuestaEntidad>)
     @Delete suspend fun borrar(tests: List<TestEntidad>)
+    @Query("DELETE FROM tests WHERE id IN (:ids)") suspend fun borrarPorIds(ids: List<Long>)
 
     /** Guarda un test con sus respuestas de una vez; devuelve el id del test. */
     @Transaction

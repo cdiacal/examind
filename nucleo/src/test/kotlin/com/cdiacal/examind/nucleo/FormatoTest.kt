@@ -34,3 +34,16 @@ class FormatoTest {
         assertEquals("1 h 3 min", Formato.duracion(3780))
     }
 }
+
+class FechaCortaTest {
+    private val zona = java.time.ZoneId.of("Europe/Madrid")
+    private fun millis(texto: String) = java.time.LocalDateTime.parse(texto).atZone(zona).toInstant().toEpochMilli()
+
+    @Test fun hoyAyerYOtrosDias() {
+        val ahora = millis("2026-11-07T12:00")
+        assertEquals("Hoy, 09:05", Formato.fechaCorta(millis("2026-11-07T09:05"), ahora, zona))
+        assertEquals("Ayer, 23:59", Formato.fechaCorta(millis("2026-11-06T23:59"), ahora, zona))
+        assertEquals("12 oct", Formato.fechaCorta(millis("2026-10-12T10:00"), ahora, zona))
+        assertEquals("3 sept 2025", Formato.fechaCorta(millis("2025-09-03T10:00"), ahora, zona))
+    }
+}

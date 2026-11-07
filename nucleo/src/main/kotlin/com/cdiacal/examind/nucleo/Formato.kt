@@ -1,5 +1,8 @@
 package com.cdiacal.examind.nucleo
 
+import java.time.Instant
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import kotlin.math.roundToLong
 
 /** Formatos de número en español: coma decimal y punto de miles. */
@@ -34,6 +37,20 @@ object Formato {
             h > 0 -> "$h h $m min"
             m > 0 -> if (s > 0) "$m min $s s" else "$m min"
             else -> "$s s"
+        }
+    }
+
+    private val MESES = listOf("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic")
+
+    /** Fecha corta para listas: «Hoy, 10:05», «Ayer, 18:30», «12 oct» o «12 oct 2025» si es de otro año. */
+    fun fechaCorta(millis: Long, ahora: Long, zona: ZoneId = ZoneId.systemDefault()): String {
+        val fecha = Instant.ofEpochMilli(millis).atZone(zona)
+        val hoy = Instant.ofEpochMilli(ahora).atZone(zona).toLocalDate()
+        val hora = "%02d:%02d".format(fecha.hour, fecha.minute)
+        return when (ChronoUnit.DAYS.between(fecha.toLocalDate(), hoy)) {
+            0L -> "Hoy, $hora"
+            1L -> "Ayer, $hora"
+            else -> "${fecha.dayOfMonth} ${MESES[fecha.monthValue - 1]}" + if (fecha.year != hoy.year) " ${fecha.year}" else ""
         }
     }
 }
