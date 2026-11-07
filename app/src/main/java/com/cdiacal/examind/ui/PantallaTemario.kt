@@ -162,11 +162,12 @@ fun PantallaTemario(
                 pestana,
                 { pestana = it; seleccion = emptySet() }
             )
+            if (pestana == 1) TarjetaBuscarOnline(vm, t.tema, ocupado = trabajo !is EstadoTrabajo.Inactivo)
             TarjetaPanel {
                 if (lista.isEmpty()) {
                     EstadoVacio(
                         if (pestana == 0) "Aún no hay preguntas de este temario.\nToca «Crear preguntas» para que la IA las escriba."
-                        else "Aún no hay preguntas de exámenes online.\nLa búsqueda de exámenes llega en la próxima versión."
+                        else "Aún no hay preguntas de exámenes online.\nBusca exámenes del tema o pega un enlace."
                     )
                 } else {
                     lista.forEach { p ->
@@ -266,7 +267,7 @@ private fun TarjetaCrear(vm: TemarioViewModel, trabajo: EstadoTrabajo, error: St
             is EstadoTrabajo.Generando -> {
                 Text(
                     if (trabajo.total == 0) "Cargando la IA del móvil… puede tardar unos segundos."
-                    else "Fragmento ${minOf(trabajo.hechos + 1, trabajo.total)} de ${trabajo.total}" +
+                    else trabajo.texto ?: "Fragmento ${minOf(trabajo.hechos + 1, trabajo.total)} de ${trabajo.total}" +
                         (trabajo.motor?.let { " con $it" } ?: "") +
                         " · ${Formato.cantidad(trabajo.nuevas, "pregunta nueva", "preguntas nuevas")}",
                     style = MaterialTheme.typography.bodySmall
@@ -444,6 +445,10 @@ private fun TarjetaRevision(p: PreguntaNueva, marcada: Boolean, onAlternar: () -
                 Spacer(Modifier.height(6.dp))
                 DetallePregunta(p.opciones, p.correcta, p.explicacion)
                 p.pagina?.let { Text("Página $it del temario", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                p.fuente?.let {
+                    Text("Fuente: ${it.titulo}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(it.url, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
     }

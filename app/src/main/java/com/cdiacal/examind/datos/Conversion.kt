@@ -66,8 +66,16 @@ fun PreguntaNueva.aBorrador(temarioId: Long, fragmentoId: Long, creadaEl: Long):
     explicacion = explicacion,
     pagina = pagina,
     huella = huella,
-    creadaEl = creadaEl
+    creadaEl = creadaEl,
+    origen = origen.name,
+    fuenteTitulo = fuente?.titulo,
+    fuenteUrl = fuente?.url,
+    fuenteConsultadaEl = fuente?.consultadaEl
 )
 
-fun BorradorEntidad.aNueva(): PreguntaNueva =
-    PreguntaNueva(enunciado, opciones, correcta, explicacion, Origen.TEMARIO, pagina, null)
+fun BorradorEntidad.aNueva(): PreguntaNueva = PreguntaNueva(
+    enunciado, opciones, correcta, explicacion,
+    runCatching { Origen.valueOf(origen) }.getOrDefault(Origen.TEMARIO),
+    pagina,
+    if (fuenteUrl != null) Fuente(fuenteTitulo.orEmpty(), fuenteUrl, fuenteConsultadaEl ?: 0) else null
+)

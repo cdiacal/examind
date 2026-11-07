@@ -63,7 +63,7 @@ class TrabajoGenerar(context: Context, params: WorkerParameters) : CoroutineWork
             val huellas = (bd.preguntas().huellas(temarioId) + bd.borradores().huellas(temarioId)).toMutableSet()
             fragmentos.forEachIndexed { i, f ->
                 val texto = "Fragmento ${i + 1} de ${fragmentos.size} con ${motor.nombre} · ${Formato.cantidad(nuevas, "pregunta nueva", "preguntas nuevas")}"
-                setProgress(workDataOf(HECHOS to i, TOTAL to fragmentos.size, NUEVAS to nuevas, MOTOR to motor.nombre))
+                setProgress(workDataOf(HECHOS to i, TOTAL to fragmentos.size, NUEVAS to nuevas, MOTOR to motor.nombre, TEXTO to texto))
                 Avisos.actualizarProgreso(app, notificacion(texto, i, fragmentos.size))
 
                 val r = GeneradorPreguntas(motor).generar(listOf(Fragmento(f.pagina, f.texto)), huellas)
@@ -120,6 +120,8 @@ class TrabajoGenerar(context: Context, params: WorkerParameters) : CoroutineWork
         const val NUEVAS = "nuevas"
         const val FALLIDOS = "fallidos"
         const val MOTOR = "motor"
+        /** Texto ya preparado para enseñar el progreso. */
+        const val TEXTO = "texto"
         const val ERROR = "error"
 
         fun etiqueta(temarioId: Long) = "temario-$temarioId"

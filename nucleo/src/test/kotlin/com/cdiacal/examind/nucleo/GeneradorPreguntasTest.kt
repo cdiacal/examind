@@ -71,3 +71,24 @@ class GeneradorPreguntasTest {
         assertNull(r.ultimoError)
     }
 }
+
+class GeneradorWebTest {
+    private val fuente = Fuente("Examen de Biología 2024", "https://uni.es/e.pdf", 1_700_000_000_000)
+
+    @Test fun preguntasOnlineConFuenteYNotasHonestas() = kotlinx.coroutines.runBlocking {
+        val respuesta = """[
+          {"pregunta": "Copiada con solución", "opciones": ["a","b","c","d"], "correcta": 0, "copiada": true, "solucion_en_texto": true, "explicacion": "Lo dice el examen."},
+          {"pregunta": "Copiada sin solución", "opciones": ["a","b","c","d"], "correcta": 1, "copiada": true, "solucion_en_texto": false, "explicacion": "Porque sí."},
+          {"pregunta": "Escrita por la IA", "opciones": ["a","b","c","d"], "correcta": 2, "copiada": false, "pagina": 3}
+        ]"""
+        var prompt = ""
+        val r = GeneradorPreguntas({ prompt = it; respuesta }).generarDesdeWeb(listOf(Fragmento(1, "texto")), emptySet(), fuente, "Biología")
+        val (a, b, c) = r.preguntas
+        org.junit.Assert.assertTrue(r.preguntas.all { it.origen == Origen.ONLINE && it.fuente == fuente && it.pagina == null })
+        org.junit.Assert.assertEquals("Lo dice el examen.", a.explicacion)
+        org.junit.Assert.assertTrue(b.explicacion.startsWith("El examen no traía la solución"))
+        org.junit.Assert.assertEquals("Pregunta escrita por la IA a partir de la página.", c.explicacion)
+        org.junit.Assert.assertTrue(prompt.contains("«Biología»"))
+        org.junit.Assert.assertTrue(prompt.contains("«Examen de Biología 2024»"))
+    }
+}

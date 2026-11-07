@@ -27,7 +27,7 @@ class Conversores {
         TemarioEntidad::class, FragmentoEntidad::class, PreguntaEntidad::class, TestEntidad::class, RespuestaEntidad::class,
         BorradorEntidad::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 @TypeConverters(Conversores::class)
@@ -59,8 +59,18 @@ abstract class BaseDatos : RoomDatabase() {
             }
         }
 
+        /** 3 → 4: los borradores pueden venir de internet, con su origen y su fuente. */
+        val MIGRACION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE borradores ADD COLUMN origen TEXT NOT NULL DEFAULT 'TEMARIO'")
+                db.execSQL("ALTER TABLE borradores ADD COLUMN fuenteTitulo TEXT")
+                db.execSQL("ALTER TABLE borradores ADD COLUMN fuenteUrl TEXT")
+                db.execSQL("ALTER TABLE borradores ADD COLUMN fuenteConsultadaEl INTEGER")
+            }
+        }
+
         /** Migraciones entre versiones, en orden. Nunca se borran datos: no hay fallbackToDestructiveMigration. */
-        val MIGRACIONES = arrayOf(MIGRACION_1_2, MIGRACION_2_3)
+        val MIGRACIONES = arrayOf(MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4)
 
         @Volatile private var instancia: BaseDatos? = null
 

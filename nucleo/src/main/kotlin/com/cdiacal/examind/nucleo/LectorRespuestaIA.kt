@@ -66,9 +66,18 @@ object LectorRespuestaIA {
         val correcta = indiceCorrecta(obj, opciones, base1) ?: return null
         if (correcta !in opciones.indices) return null
 
-        val explicacion = primerTexto(obj, "explicacion", "explicación", "explanation")?.trim().orEmpty()
-        val pagina = obj.opt("pagina")?.let { (it as? Number)?.toInt() ?: it.toString().trim().toIntOrNull() }
-            ?.takeIf { it > 0 } ?: paginaPorDefecto
+        var explicacion = primerTexto(obj, "explicacion", "explicación", "explanation")?.trim().orEmpty()
+        if (origen == Origen.ONLINE) {
+            // Se dice claro de dónde sale cada cosa: copiada del examen o escrita por la IA, y quién da la solución
+            val nota = when {
+                obj.optBoolean("copiada", true).not() -> "Pregunta escrita por la IA a partir de la página."
+                obj.optBoolean("solucion_en_texto", true).not() -> "El examen no traía la solución: la respuesta la propone la IA."
+                else -> ""
+            }
+            explicacion = listOf(nota, explicacion).filter { it.isNotBlank() }.joinToString(" ")
+        }
+        val pagina = if (origen == Origen.ONLINE) null
+        else obj.opt("pagina")?.let { (it as? Number)?.toInt() ?: it.toString().trim().toIntOrNull() }?.takeIf { it > 0 } ?: paginaPorDefecto
 
         return PreguntaNueva(enunciado, opciones, correcta, explicacion, origen, pagina, fuente)
     }

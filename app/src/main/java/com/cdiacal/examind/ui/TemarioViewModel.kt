@@ -14,6 +14,12 @@ import com.cdiacal.examind.datos.BorradorEntidad
 import com.cdiacal.examind.datos.aNueva
 import com.cdiacal.examind.ia.GestorIA
 import com.cdiacal.examind.segundoplano.TrabajoGenerar
+import com.cdiacal.examind.segundoplano.TrabajoOnline
+import com.cdiacal.examind.online.ClienteWeb
+import com.cdiacal.examind.online.FalloWeb
+import com.cdiacal.examind.nucleo.BusquedaWeb
+import com.cdiacal.examind.nucleo.ResultadoWeb
+import kotlinx.coroutines.Job
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,7 +40,15 @@ sealed interface EstadoTrabajo {
     data object Inactivo : EstadoTrabajo
     /** Esperando a que termine otro temario (la IA hace uno cada vez). */
     data object EnCola : EstadoTrabajo
-    data class Generando(val motor: String?, val hechos: Int, val total: Int, val nuevas: Int) : EstadoTrabajo
+    data class Generando(val motor: String?, val hechos: Int, val total: Int, val nuevas: Int, val texto: String?) : EstadoTrabajo
+}
+
+/** La búsqueda de exámenes online. [usadas]: direcciones (normalizadas) de las que ya hay preguntas en el temario. */
+sealed interface EstadoBusqueda {
+    data object Inactivo : EstadoBusqueda
+    data object Buscando : EstadoBusqueda
+    data class Resultados(val lista: List<ResultadoWeb>, val seleccion: Set<String>, val usadas: Set<String>) : EstadoBusqueda
+    data class Error(val mensaje: String) : EstadoBusqueda
 }
 
 /** Lo que se acaba de guardar al revisar, para poder deshacerlo (vuelven a ser borradores). */
@@ -78,7 +92,8 @@ class TemarioViewModel(app: Application) : AndroidViewModel(app) {
                     d.getString(TrabajoGenerar.MOTOR),
                     d.getInt(TrabajoGenerar.HECHOS, 0),
                     d.getInt(TrabajoGenerar.TOTAL, 0),
-                    d.getInt(TrabajoGenerar.NUEVAS, 0)
+                    d.getInt(TrabajoGenerar.NUEVAS, 0),
+                    d.getString(TrabajoGenerar.TEXTO)
                 )
             }
             infos.any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED } -> EstadoTrabajo.EnCola
@@ -97,8 +112,73 @@ class TemarioViewModel(app: Application) : AndroidViewModel(app) {
     /** Borradores que el usuario ha desmarcado (por defecto se guardan todos). */
     val desmarcados: StateFlow<Set<Long>> = _desmarcados.asStateFlow()
 
+    private val _busqueda = MutableStateFlow<EstadoBusqueda>(EstadoBusqueda.Inactivo)
+    val busqueda: StateFlow<EstadoBusqueda> = _busqueda.asStateFlow()
+    private var buscando: Job? = null
+
+    /** Busca exámenes del [tema] en internet y lo guarda como tema del temario para la próxima vez. */
+    fun buscar(tema: String) {
+        val id = temarioId.value ?: return
+        val t = tema.trim()
+        if (t.isEmpty()) return
+        buscando?.cancel()
+        buscando = viewModelScope.launch {
+            _busqueda.value = EstadoBusqueda.Buscando
+            bd.temarios().cambiarTema(id, t)
+            _busqueda.value = try {
+                val lista = ClienteWeb(getApplication()).buscar(t)
+                val usadas = bd.borradores().urlsUsadas(id).map(BusquedaWeb::normalizarUrl).toSet()
+                if (lista.isEmpty()) EstadoBusqueda.Error("No se ha encontrado nada para «$t». Prueba con otras palabras (por ejemplo, el nombre de la asignatura) o pega un enlace.")
+                else EstadoBusqueda.Resultados(
+                    lista,
+                    // Se proponen las 3 primeras que aún no se han usado
+                    lista.filter { BusquedaWeb.normalizarUrl(it.url) !in usadas }.take(3).map { it.url }.toSet(),
+                    usadas
+                )
+            } catch (e: FalloWeb) {
+                EstadoBusqueda.Error(e.message.orEmpty())
+            }
+        }
+    }
+
+    fun alternarResultado(url: String) {
+        val r = _busqueda.value as? EstadoBusqueda.Resultados ?: return
+        _busqueda.value = r.copy(seleccion = if (url in r.seleccion) r.seleccion - url else r.seleccion + url)
+    }
+
+    /** Añade a mano un enlace a la lista (marcado). Devuelve un mensaje de error si no es una dirección válida. */
+    fun anadirEnlace(texto: String): String? {
+        val url = BusquedaWeb.urlValida(texto)
+            ?: return "Eso no parece una dirección web. Cópiala entera desde el navegador (por ejemplo, https://…)."
+        val actual = _busqueda.value as? EstadoBusqueda.Resultados
+        val nuevo = ResultadoWeb(BusquedaWeb.dominio(url), url, "Añadido a mano")
+        _busqueda.value = if (actual == null) EstadoBusqueda.Resultados(listOf(nuevo), setOf(url), emptySet())
+        else actual.copy(lista = listOf(nuevo) + actual.lista.filter { it.url != url }, seleccion = actual.seleccion + url)
+        return null
+    }
+
+    fun cerrarBusqueda() { buscando?.cancel(); _busqueda.value = EstadoBusqueda.Inactivo }
+
+    /** Lanza en segundo plano sacar preguntas de las páginas marcadas. */
+    fun sacarPreguntasOnline(tema: String) {
+        val id = temarioId.value ?: return
+        val r = _busqueda.value as? EstadoBusqueda.Resultados ?: return
+        val elegidas = r.lista.filter { it.url in r.seleccion }
+        if (elegidas.isEmpty()) return
+        viewModelScope.launch {
+            _error.value = null
+            if (gestor.eleccion() == null) {
+                _busqueda.value = EstadoBusqueda.Error("Aún no hay IA en el móvil. Ve a Ajustes → IA del móvil y descarga un modelo.")
+                return@launch
+            }
+            TrabajoOnline.lanzar(getApplication(), id, tema.trim(), elegidas.map { it.url to it.titulo })
+            _busqueda.value = EstadoBusqueda.Inactivo
+        }
+    }
+
     fun abrir(id: Long) {
         if (temarioId.value != id) {
+            cerrarBusqueda()
             _revisando.value = false
             _desmarcados.value = emptySet()
             _error.value = null

@@ -15,7 +15,7 @@ Pensada para estudiantes de universidad. Todo se guarda en el móvil, sin cuenta
 | IA del móvil (Gemini Nano o modelo descargable) | Hecho: compila y pasan las pruebas |
 | Generar preguntas desde el temario | Hecho: compila y pasan las pruebas |
 | Hacer test y resultado | Hecho: compila y pasan las pruebas |
-| Tests con exámenes online y su fuente | Pendiente |
+| Tests con exámenes online y su fuente | Hecho: compila y pasan las pruebas |
 | Copia de seguridad y exportar a CSV | Pendiente |
 
 ## Qué hace ahora
@@ -44,6 +44,12 @@ Pensada para estudiantes de universidad. Todo se guarda en el móvil, sin cuenta
 - Resultado: nota y calificación, aciertos, fallos, en blanco y tiempo; revisión de cada pregunta con la respuesta
   correcta, la explicación y la fuente (página del temario o enlace del examen online). «Repetir las que fallaste»
   hace un test nuevo solo con esas. Cada test queda guardado en el historial.
+- Exámenes online (temario → pestaña «Online»): busca el tema en internet (DuckDuckGo y, si falla, Mojeek; en
+  español e inglés y una búsqueda de PDF), sin claves ni cuentas. Vista previa de los resultados con casillas
+  (título, sitio, si es PDF, si ya se usó en el temario) y opción de pegar un enlace a mano. En segundo plano, la app
+  descarga cada página o PDF y la IA copia sus preguntas tipo test o, si no tiene, escribe preguntas sobre su
+  contenido. Cada pregunta guarda su fuente (título, enlace y fecha de consulta) y dice si la escribió la IA o si la
+  respuesta la propone la IA porque el examen no traía la solución. Se revisan como las del temario.
 - Ajustes → IA del móvil: dice si el móvil tiene Gemini Nano (y lo descarga si Android lo permite) y ofrece dos
   modelos descargables que se ejecutan con LiteRT-LM: Gemma 4 E2B completo (2,6 GB, móviles con 8 GB de RAM) y
   Qwen 2.5 1.5B ligero (1,6 GB, 6 GB de RAM). Recomienda uno según la RAM del móvil. Se descargan con el gestor de
@@ -64,7 +70,7 @@ Pensada para estudiantes de universidad. Todo se guarda en el móvil, sin cuenta
 
 Base de datos Room con migraciones explícitas: al actualizar nunca se borran datos. El esquema de cada versión lo
 genera Room en `app/schemas` al compilar y el flujo lo sube como artefacto «esquema-bd»; se guardará en el
-repositorio. Migraciones: 1 → 2 (huella del PDF en cada temario), 2 → 3 (tabla de borradores por revisar).
+repositorio. Migraciones: 1 → 2 (huella del PDF en cada temario), 2 → 3 (tabla de borradores por revisar), 3 → 4 (origen y fuente de los borradores).
 
 ## Código
 

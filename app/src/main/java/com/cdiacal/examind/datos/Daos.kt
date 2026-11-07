@@ -38,6 +38,7 @@ interface TemarioDao {
     @Insert suspend fun insertar(temario: TemarioEntidad): Long
     @Insert suspend fun insertarTodos(temarios: List<TemarioEntidad>)
     @Update suspend fun actualizar(temario: TemarioEntidad)
+    @Query("UPDATE temarios SET tema = :tema WHERE id = :id") suspend fun cambiarTema(id: Long, tema: String)
     @Delete suspend fun borrar(temario: TemarioEntidad)
 
     @Query("SELECT * FROM temarios WHERE id = :id") suspend fun porId(id: Long): TemarioEntidad?
@@ -138,4 +139,13 @@ interface BorradorDao {
     @Query("SELECT * FROM borradores WHERE temarioId = :temarioId ORDER BY id") suspend fun deTemario(temarioId: Long): List<BorradorEntidad>
     @Query("SELECT huella FROM borradores WHERE temarioId = :temarioId") suspend fun huellas(temarioId: Long): List<String>
     @Query("DELETE FROM borradores WHERE temarioId = :temarioId") suspend fun borrarDeTemario(temarioId: Long)
+
+    /** Direcciones web ya usadas en este temario (en preguntas guardadas o pendientes), para marcarlas al buscar. */
+    @Query(
+        """
+        SELECT fuenteUrl FROM preguntas WHERE temarioId = :temarioId AND fuenteUrl IS NOT NULL
+        UNION SELECT fuenteUrl FROM borradores WHERE temarioId = :temarioId AND fuenteUrl IS NOT NULL
+        """
+    )
+    suspend fun urlsUsadas(temarioId: Long): List<String>
 }

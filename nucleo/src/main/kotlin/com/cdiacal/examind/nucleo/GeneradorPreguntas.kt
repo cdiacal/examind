@@ -33,6 +33,30 @@ ${texto.trim()}
 """.trimStart()
 }
 
+/** Instrucciones para sacar preguntas de una página web o un PDF encontrado en internet. */
+fun PromptPreguntas.desdeWeb(texto: String, tituloPagina: String, tema: String, cuantas: Int): String = """
+Preparas un examen tipo test sobre «${tema.trim()}». El TEXTO viene de la página «${tituloPagina.trim()}».
+
+- Si el TEXTO tiene preguntas tipo test (un examen o un banco de preguntas), cópialas tal cual, hasta $cuantas.
+- Si no tiene preguntas tipo test, escribe $cuantas preguntas nuevas en español sobre lo que explica el TEXTO.
+- Si el TEXTO no trata del tema, responde solo [].
+
+Reglas:
+- Cada pregunta tiene exactamente 4 opciones y solo una es correcta.
+- "correcta" es la posición de la opción correcta, empezando en 0.
+- "copiada" es true si la pregunta está en el TEXTO y false si la has escrito tú.
+- "solucion_en_texto" es true si el TEXTO dice cuál es la respuesta correcta y false si la has deducido tú.
+- "explicacion" es una frase que justifica la respuesta.
+
+Responde solo con una lista JSON, sin nada antes ni después, con este formato:
+[{"pregunta": "...", "opciones": ["...", "...", "...", "..."], "correcta": 0, "copiada": true, "solucion_en_texto": true, "explicacion": "..."}]
+
+TEXTO:
+""${'"'}
+${texto.trim()}
+""${'"'}
+""".trimStart()
+
 /** Cómo va la generación: fragmentos hechos de [total] y preguntas nuevas encontradas hasta ahora. */
 data class Avance(val hechos: Int, val total: Int, val nuevas: Int)
 
@@ -53,10 +77,38 @@ data class ResultadoGeneracion(
  */
 class GeneradorPreguntas(private val motor: MotorTexto, private val porFragmento: Int = 3) {
 
+    /** Preguntas del temario: llevan la página del fragmento (si la tiene). */
     suspend fun generar(
         fragmentos: List<Fragmento>,
         huellasGuardadas: Set<String>,
         alAvanzar: (Avance) -> Unit = {}
+    ): ResultadoGeneracion = recorrer(fragmentos, huellasGuardadas, alAvanzar) { fragmento, respuesta ->
+        // La página es siempre la del fragmento (0 = sin página): el modelo no la sabe y podría inventarla
+        LectorRespuestaIA.leer(respuesta, origen = Origen.TEMARIO).let { r ->
+            r.copy(preguntas = r.preguntas.map { it.copy(pagina = fragmento.pagina.takeIf { p -> p > 0 }) })
+        }
+    }
+
+    /** Preguntas de una página encontrada en internet: llevan su [fuente] y ninguna página del temario. */
+    suspend fun generarDesdeWeb(
+        fragmentos: List<Fragmento>,
+        huellasGuardadas: Set<String>,
+        fuente: Fuente,
+        tema: String,
+        alAvanzar: (Avance) -> Unit = {}
+    ): ResultadoGeneracion = recorrer(
+        fragmentos, huellasGuardadas, alAvanzar,
+        prompt = { f -> PromptPreguntas.desdeWeb(f.texto, fuente.titulo, tema, porFragmento + 2) }
+    ) { _, respuesta ->
+        LectorRespuestaIA.leer(respuesta, origen = Origen.ONLINE, fuente = fuente)
+    }
+
+    private suspend fun recorrer(
+        fragmentos: List<Fragmento>,
+        huellasGuardadas: Set<String>,
+        alAvanzar: (Avance) -> Unit,
+        prompt: (Fragmento) -> String = { f -> PromptPreguntas.desdeTemario(f.texto, f.pagina, porFragmento) },
+        leer: (Fragmento, String) -> LectorRespuestaIA.Resultado
     ): ResultadoGeneracion {
         val huellas = huellasGuardadas.toMutableSet()
         val nuevas = mutableListOf<PreguntaNueva>()
@@ -69,7 +121,7 @@ class GeneradorPreguntas(private val motor: MotorTexto, private val porFragmento
             currentCoroutineContext().ensureActive()
             alAvanzar(Avance(i, fragmentos.size, nuevas.size))
             val respuesta = try {
-                motor.generar(PromptPreguntas.desdeTemario(fragmento.texto, fragmento.pagina, porFragmento))
+                motor.generar(prompt(fragmento))
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -79,12 +131,10 @@ class GeneradorPreguntas(private val motor: MotorTexto, private val porFragmento
             if (respuesta == null) {
                 fallidos++
             } else {
-                val leido = LectorRespuestaIA.leer(respuesta, origen = Origen.TEMARIO)
+                val leido = leer(fragmento, respuesta)
                 descartadas += leido.descartadas
                 if (leido.vacio) fallidos++
-                // La página es siempre la del fragmento (0 = sin página): el modelo no la sabe y podría inventarla
-                val conPagina = leido.preguntas.map { it.copy(pagina = fragmento.pagina.takeIf { p -> p > 0 }) }
-                val separacion = separarDuplicadas(conPagina, huellas)
+                val separacion = separarDuplicadas(leido.preguntas, huellas)
                 duplicadas += separacion.duplicadas.size
                 separacion.nuevas.forEach { huellas += it.huella }
                 nuevas += separacion.nuevas

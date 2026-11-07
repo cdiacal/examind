@@ -99,7 +99,8 @@ data class RespuestaEntidad(
 
 /**
  * Una pregunta que ha escrito la IA y está pendiente de revisar (la generación va en segundo plano y se revisa
- * después). [fragmentoId] es el fragmento del que sale, para devolverlo a «sin usar» si se descartan todas.
+ * después). [fragmentoId] es el fragmento del que sale, para devolverlo a «sin usar» si se descartan todas
+ * (0 en las que vienen de internet).
  */
 @Entity(
     tableName = "borradores",
@@ -116,5 +117,10 @@ data class BorradorEntidad(
     val explicacion: String,
     val pagina: Int?,
     val huella: String,
-    val creadaEl: Long
+    val creadaEl: Long,
+    /** "TEMARIO" u "ONLINE"; las online llevan su fuente (y [fragmentoId] = 0). */
+    @ColumnInfo(defaultValue = "'TEMARIO'") val origen: String = "TEMARIO",
+    val fuenteTitulo: String? = null,
+    val fuenteUrl: String? = null,
+    val fuenteConsultadaEl: Long? = null
 )
