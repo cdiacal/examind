@@ -266,6 +266,7 @@ private fun PantallaAjustes(vm: InicioViewModel, avisos: SnackbarHostState, onVo
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         CabeceraSimple(titulo = "Ajustes", onVolver = onVolver)
+        TarjetaIA(viewModel())
         TarjetaPanel {
             Text("Tema", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))

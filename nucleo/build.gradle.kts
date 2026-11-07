@@ -15,6 +15,8 @@ kotlin {
 }
 
 dependencies {
+    // Solo para comprobar si se ha cancelado la generación entre fragmentos
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
     // Android ya trae org.json; aquí solo hace falta para compilar y para las pruebas
     compileOnly("org.json:json:20240303")
     testImplementation("org.json:json:20240303")

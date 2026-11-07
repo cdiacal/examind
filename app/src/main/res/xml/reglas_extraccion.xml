@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copia automática y traspaso a otro móvil (Android 12 o posterior) -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="external" path="modelos/" />
+        <exclude domain="file" path="temarios/" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="external" path="modelos/" />
+    </device-transfer>
+</data-extraction-rules>

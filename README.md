@@ -12,7 +12,8 @@ Pensada para estudiantes de universidad. Todo se guarda en el móvil, sin cuenta
 | Modelo de datos (Room) y pruebas | Hecho: compila y pasan las pruebas |
 | Pantalla de inicio | Hecho: compila y pasan las pruebas |
 | Añadir temario PDF | Hecho: compila y pasan las pruebas |
-| Generar preguntas con la IA del móvil | Pendiente |
+| IA del móvil (Gemini Nano o modelo descargable) | Hecho: compila y pasan las pruebas |
+| Generar preguntas desde el temario | Pendiente |
 | Hacer test y resultado | Hecho: compila y pasan las pruebas |
 | Tests con exámenes online y su fuente | Pendiente |
 | Copia de seguridad y exportar a CSV | Pendiente |
@@ -33,6 +34,11 @@ Pensada para estudiantes de universidad. Todo se guarda en el móvil, sin cuenta
 - Resultado: nota y calificación, aciertos, fallos, en blanco y tiempo; revisión de cada pregunta con la respuesta
   correcta, la explicación y la fuente (página del temario o enlace del examen online). «Repetir las que fallaste»
   hace un test nuevo solo con esas. Cada test queda guardado en el historial.
+- Ajustes → IA del móvil: dice si el móvil tiene Gemini Nano (y lo descarga si Android lo permite) y ofrece dos
+  modelos descargables que se ejecutan con LiteRT-LM: Gemma 4 E2B completo (2,6 GB, móviles con 8 GB de RAM) y
+  Qwen 2.5 1.5B ligero (1,6 GB, 6 GB de RAM). Recomienda uno según la RAM del móvil. Se descargan con el gestor de
+  descargas de Android (con wifi o con datos) o se eligen a mano si ya se bajaron desde el navegador. «Probar la IA»
+  carga el motor elegido y mide cuánto tarda en responder.
 - Ajustes → «Añadir el ejemplo»: un temario de biología con 12 preguntas y dos tests, para ver la app con datos.
   Se puede deshacer. Sus fuentes online son ficticias (example.org).
 - Ajustes: tema según el sistema, claro u oscuro (se aplica al instante y se recuerda).

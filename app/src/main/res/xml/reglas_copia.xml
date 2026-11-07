@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copia automática de Android (hasta Android 11): la base de datos sí; los modelos y los PDF, no (pesan mucho) -->
+<full-backup-content>
+    <exclude domain="external" path="modelos/" />
+    <exclude domain="file" path="temarios/" />
+</full-backup-content>
