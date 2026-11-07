@@ -69,6 +69,8 @@ interface TemarioDao {
     @Query("SELECT * FROM fragmentos WHERE temarioId = :temarioId AND usado = 0 ORDER BY orden LIMIT :limite")
     suspend fun fragmentosSinUsar(temarioId: Long, limite: Int): List<FragmentoEntidad>
     @Query("UPDATE fragmentos SET usado = 1 WHERE id = :id") suspend fun marcarUsado(id: Long)
+    @Query("UPDATE fragmentos SET usado = 1 WHERE id IN (:ids)") suspend fun marcarUsados(ids: List<Long>)
+    @Query("UPDATE fragmentos SET usado = 0 WHERE id IN (:ids)") suspend fun desmarcarUsados(ids: List<Long>)
     @Query("SELECT * FROM fragmentos ORDER BY temarioId, orden") suspend fun todosLosFragmentos(): List<FragmentoEntidad>
 }
 
@@ -85,6 +87,7 @@ interface PreguntaDao {
     @Query("SELECT * FROM preguntas WHERE temarioId = :temarioId AND origen = :origen ORDER BY creadaEl DESC")
     fun observar(temarioId: Long, origen: String): Flow<List<PreguntaEntidad>>
     @Query("SELECT * FROM preguntas ORDER BY temarioId, creadaEl") suspend fun todas(): List<PreguntaEntidad>
+    @Query("DELETE FROM preguntas WHERE id IN (:ids)") suspend fun borrarPorIds(ids: List<Long>)
     @Query("SELECT COUNT(*) FROM preguntas") fun observarTotal(): Flow<Int>
 
     @Query(
@@ -120,4 +123,5 @@ interface TestDao {
     @Query("SELECT * FROM tests ORDER BY fecha") suspend fun todos(): List<TestEntidad>
     @Query("SELECT * FROM respuestas WHERE testId = :testId ORDER BY orden") suspend fun respuestas(testId: Long): List<RespuestaEntidad>
     @Query("SELECT * FROM respuestas ORDER BY testId, orden") suspend fun todasLasRespuestas(): List<RespuestaEntidad>
+    @Query("SELECT * FROM respuestas WHERE preguntaId IN (:preguntaIds)") suspend fun respuestasDe(preguntaIds: List<Long>): List<RespuestaEntidad>
 }

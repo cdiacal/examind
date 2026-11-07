@@ -66,15 +66,17 @@ import com.cdiacal.examind.nucleo.Formato
 import kotlinx.coroutines.launch
 
 /** Pantallas de la app. */
-private enum class Pantalla { INICIO, TEST, ANADIR, AJUSTES, GALERIA }
+private enum class Pantalla { INICIO, TEST, ANADIR, TEMARIO, AJUSTES, GALERIA }
 
 @Composable
 fun AppExamind() {
     var pantalla by rememberSaveable { mutableStateOf(Pantalla.INICIO) }
+    var temarioAbierto by rememberSaveable { mutableStateOf(0L) }
     val avisos = remember { SnackbarHostState() }
     val inicio: InicioViewModel = viewModel()
     val test: TestViewModel = viewModel()
     val importar: ImportarViewModel = viewModel()
+    val temario: TemarioViewModel = viewModel()
     val alcance = rememberCoroutineScope()
 
     // Selector de archivos del sistema, solo PDF
@@ -101,17 +103,28 @@ fun AppExamind() {
                     inicio, avisos,
                     onAjustes = { pantalla = Pantalla.AJUSTES },
                     onHacerTest = { test.abandonar(); pantalla = Pantalla.TEST },
-                    onAnadir = abrirSelector
+                    onAnadir = abrirSelector,
+                    onAbrirTemario = { temarioAbierto = it; pantalla = Pantalla.TEMARIO }
+                )
+                Pantalla.TEMARIO -> PantallaTemario(
+                    temario, temarioAbierto, avisos,
+                    onVolver = { pantalla = Pantalla.INICIO },
+                    onHacerTest = { id -> test.abandonar(); test.elegirTemario(id); pantalla = Pantalla.TEST }
                 )
                 Pantalla.ANADIR -> PantallaAnadirTemario(
                     importar,
                     onElegirOtro = abrirSelector,
                     onGuardado = { guardado ->
-                        pantalla = Pantalla.INICIO
+                        // Directo al temario, para crear las preguntas
+                        temarioAbierto = guardado.id
+                        pantalla = Pantalla.TEMARIO
                         alcance.launch {
                             avisos.currentSnackbarData?.dismiss()
                             val r = avisos.showSnackbar("Temario «${guardado.nombre}» guardado.", actionLabel = "Deshacer")
-                            if (r == SnackbarResult.ActionPerformed) importar.deshacer(guardado)
+                            if (r == SnackbarResult.ActionPerformed) {
+                                importar.deshacer(guardado)
+                                pantalla = Pantalla.INICIO
+                            }
                         }
                     },
                     onSalir = { pantalla = Pantalla.INICIO }
@@ -142,7 +155,8 @@ private fun PantallaInicio(
     avisos: SnackbarHostState,
     onAjustes: () -> Unit,
     onHacerTest: () -> Unit,
-    onAnadir: () -> Unit
+    onAnadir: () -> Unit,
+    onAbrirTemario: (Long) -> Unit
 ) {
     val estado by vm.estado.collectAsStateWithLifecycle()
 
@@ -198,7 +212,7 @@ private fun PantallaInicio(
                     if (e.temarios.isEmpty()) {
                         EstadoVacio("Aún no tienes temarios.\nToca el botón + para añadir un PDF y crear tus primeras preguntas.")
                     } else {
-                        e.temarios.forEach { FilaTemario(it) }
+                        e.temarios.forEach { t -> FilaTemario(t) { onAbrirTemario(t.id) } }
                     }
                 }
 
@@ -229,14 +243,15 @@ private fun PantallaInicio(
 }
 
 @Composable
-private fun FilaTemario(t: TemarioConCuentas) {
+private fun FilaTemario(t: TemarioConCuentas, onClick: () -> Unit) {
     val total = t.preguntasTemario + t.preguntasOnline
     FilaLista(
         titulo = t.nombre,
         importe = Formato.cantidad(total, "pregunta"),
         colorImporte = MaterialTheme.colorScheme.onSurfaceVariant,
         subtitulo = "Del temario: ${Formato.miles(t.preguntasTemario.toLong())} · Online: ${Formato.miles(t.preguntasOnline.toLong())}",
-        icono = { IconoInicial(t.nombre, t.id) }
+        icono = { IconoInicial(t.nombre, t.id) },
+        onClick = onClick
     )
 }
 

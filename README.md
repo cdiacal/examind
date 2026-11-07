@@ -13,7 +13,7 @@ Pensada para estudiantes de universidad. Todo se guarda en el móvil, sin cuenta
 | Pantalla de inicio | Hecho: compila y pasan las pruebas |
 | Añadir temario PDF | Hecho: compila y pasan las pruebas |
 | IA del móvil (Gemini Nano o modelo descargable) | Hecho: compila y pasan las pruebas |
-| Generar preguntas desde el temario | Pendiente |
+| Generar preguntas desde el temario | Hecho: compila y pasan las pruebas |
 | Hacer test y resultado | Hecho: compila y pasan las pruebas |
 | Tests con exámenes online y su fuente | Pendiente |
 | Copia de seguridad y exportar a CSV | Pendiente |
@@ -26,7 +26,13 @@ Pensada para estudiantes de universidad. Todo se guarda en el móvil, sin cuenta
 - Añadir temario (botón +): eliges un PDF, la app lo copia, lee el texto de cada página y enseña una vista previa
   (páginas, fragmentos de texto, cómo se lee) para ponerle nombre y el tema que se buscará online. Quita cabeceras,
   pies y números de página. Avisa si el PDF es escaneado (sin texto) o tiene contraseña, y no deja añadir dos veces
-  el mismo PDF. Tras guardar, «Deshacer».
+  el mismo PDF. Tras guardar, «Deshacer», y se abre el temario.
+- Temario (tocar uno en el inicio): cuántas preguntas tiene, «Crear preguntas con la IA» con los siguientes 5, 10,
+  20 o todos los fragmentos sin usar (unas 3 preguntas por fragmento), con progreso y cancelar. Después se revisan
+  todas (opciones, la correcta con «✓ Correcta», explicación y página) y se guardan las marcadas, sin duplicados;
+  «Deshacer» tras guardar. Lista de preguntas del temario y online: tocar abre el detalle; mantener pulsado
+  selecciona varias para eliminarlas (con confirmación y «Deshacer»). «Hacer un test con este temario» y eliminar
+  el temario (con confirmación; el historial de tests se conserva).
 - Hacer un test: eliges temario, origen (del temario, online o mezcla), «solo las que fallaste», número de preguntas
   y corrección «al momento» (ves si aciertas y la explicación) o «al final» (como un examen, puedes cambiar
   respuestas). Sale ya elegido lo del último test. Las opciones se barajan cada vez y se priorizan las preguntas
