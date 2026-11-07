@@ -1,12 +1,12 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
 }
 
 android {
     namespace = "com.cdiacal.examind"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.cdiacal.examind"
@@ -38,16 +38,23 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
+    // La librería de LiteRT-LM trae su .so nativo; si llega dos veces, se usa uno
+    packaging {
+        jniLibs {
+            pickFirsts.add("**/liblitertlm_jni.so")
+        }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        // LiteRT-LM se compila con un Kotlin más nuevo; su metadato se puede leer igualmente
+        freeCompilerArgs.add("-Xskip-metadata-version-check")
     }
 }
 
@@ -66,9 +73,16 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
     // Room: datos locales con migraciones explícitas
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    ksp("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-runtime:2.7.2")
+    implementation("androidx.room:room-ktx:2.7.2")
+    ksp("androidx.room:room-compiler:2.7.2")
+
+    // IA en el móvil: Gemini Nano del sistema (ML Kit) y modelos Gemma/Qwen descargables (LiteRT-LM)
+    implementation("com.google.mlkit:genai-prompt:1.0.0-beta5")
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.18.1")
+
+    // Leer el texto de los PDF
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 
     testImplementation("junit:junit:4.13.2")
     // Las clases org.json del SDK de Android están vacías en las pruebas locales: esta es la implementación real
