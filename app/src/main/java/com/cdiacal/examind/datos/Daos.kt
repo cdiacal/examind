@@ -41,6 +41,17 @@ interface TemarioDao {
     @Query("SELECT * FROM temarios WHERE id = :id") suspend fun porId(id: Long): TemarioEntidad?
     @Query("SELECT * FROM temarios ORDER BY creadoEl") suspend fun todos(): List<TemarioEntidad>
     @Query("SELECT COUNT(*) FROM temarios WHERE nombre = :nombre") suspend fun contarLlamados(nombre: String): Int
+    @Query("SELECT * FROM temarios WHERE huellaArchivo = :huella AND huellaArchivo != '' LIMIT 1")
+    suspend fun porHuellaArchivo(huella: String): TemarioEntidad?
+    @Query("SELECT nombre FROM temarios") suspend fun nombres(): List<String>
+
+    /** Guarda un temario nuevo con sus fragmentos de una vez; devuelve su id. */
+    @Transaction
+    suspend fun guardarConFragmentos(temario: TemarioEntidad, fragmentos: List<FragmentoEntidad>): Long {
+        val id = insertar(temario)
+        insertarFragmentos(fragmentos.map { it.copy(temarioId = id) })
+        return id
+    }
 
     @Query(
         """

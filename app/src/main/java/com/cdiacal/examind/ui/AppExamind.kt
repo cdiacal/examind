@@ -1,6 +1,8 @@
 package com.cdiacal.examind.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,7 +66,7 @@ import com.cdiacal.examind.nucleo.Formato
 import kotlinx.coroutines.launch
 
 /** Pantallas de la app. */
-private enum class Pantalla { INICIO, TEST, AJUSTES, GALERIA }
+private enum class Pantalla { INICIO, TEST, ANADIR, AJUSTES, GALERIA }
 
 @Composable
 fun AppExamind() {
@@ -72,6 +74,17 @@ fun AppExamind() {
     val avisos = remember { SnackbarHostState() }
     val inicio: InicioViewModel = viewModel()
     val test: TestViewModel = viewModel()
+    val importar: ImportarViewModel = viewModel()
+    val alcance = rememberCoroutineScope()
+
+    // Selector de archivos del sistema, solo PDF
+    val elegirPdf = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            importar.leer(uri)
+            pantalla = Pantalla.ANADIR
+        }
+    }
+    val abrirSelector = { elegirPdf.launch(arrayOf("application/pdf")) }
 
     // El flujo del test gestiona su propio «atrás» (pregunta antes de salir de un test a medias)
     BackHandler(enabled = pantalla == Pantalla.AJUSTES || pantalla == Pantalla.GALERIA) {
@@ -87,7 +100,21 @@ fun AppExamind() {
                 Pantalla.INICIO -> PantallaInicio(
                     inicio, avisos,
                     onAjustes = { pantalla = Pantalla.AJUSTES },
-                    onHacerTest = { test.abandonar(); pantalla = Pantalla.TEST }
+                    onHacerTest = { test.abandonar(); pantalla = Pantalla.TEST },
+                    onAnadir = abrirSelector
+                )
+                Pantalla.ANADIR -> PantallaAnadirTemario(
+                    importar,
+                    onElegirOtro = abrirSelector,
+                    onGuardado = { guardado ->
+                        pantalla = Pantalla.INICIO
+                        alcance.launch {
+                            avisos.currentSnackbarData?.dismiss()
+                            val r = avisos.showSnackbar("Temario «${guardado.nombre}» guardado.", actionLabel = "Deshacer")
+                            if (r == SnackbarResult.ActionPerformed) importar.deshacer(guardado)
+                        }
+                    },
+                    onSalir = { pantalla = Pantalla.INICIO }
                 )
                 Pantalla.TEST -> FlujoTest(test, onSalir = { test.abandonar(); pantalla = Pantalla.INICIO })
                 Pantalla.AJUSTES -> PantallaAjustes(
@@ -110,12 +137,14 @@ fun AppExamind() {
 }
 
 @Composable
-private fun PantallaInicio(vm: InicioViewModel, avisos: SnackbarHostState, onAjustes: () -> Unit, onHacerTest: () -> Unit) {
+private fun PantallaInicio(
+    vm: InicioViewModel,
+    avisos: SnackbarHostState,
+    onAjustes: () -> Unit,
+    onHacerTest: () -> Unit,
+    onAnadir: () -> Unit
+) {
     val estado by vm.estado.collectAsStateWithLifecycle()
-    val alcance = rememberCoroutineScope()
-    fun proximamente(texto: String) {
-        alcance.launch { avisos.currentSnackbarData?.dismiss(); avisos.showSnackbar(texto) }
-    }
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -189,7 +218,7 @@ private fun PantallaInicio(vm: InicioViewModel, avisos: SnackbarHostState, onAju
         }
 
         FloatingActionButton(
-            onClick = { proximamente("Añadir temarios en PDF llega en una próxima versión.") },
+            onClick = onAnadir,
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)

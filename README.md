@@ -11,7 +11,8 @@ Pensada para estudiantes de universidad. Todo se guarda en el móvil, sin cuenta
 | Esqueleto con el tema (claro, oscuro y según el sistema) y la galería de estilo | Hecho: compila en GitHub Actions |
 | Modelo de datos (Room) y pruebas | Hecho: compila y pasan las pruebas |
 | Pantalla de inicio | Hecho: compila y pasan las pruebas |
-| Añadir temario PDF y generar preguntas (IA en el móvil) | Pendiente |
+| Añadir temario PDF | Hecho: compila y pasan las pruebas |
+| Generar preguntas con la IA del móvil | Pendiente |
 | Hacer test y resultado | Hecho: compila y pasan las pruebas |
 | Tests con exámenes online y su fuente | Pendiente |
 | Copia de seguridad y exportar a CSV | Pendiente |
@@ -20,7 +21,11 @@ Pensada para estudiantes de universidad. Todo se guarda en el móvil, sin cuenta
 
 - Inicio: % de aciertos de tus últimos 20 tests en grande, cuántos temarios, preguntas y tests llevas, tus temarios
   (con sus preguntas del temario y online) y tus 5 últimos tests con su nota y calificación (Suspenso, Aprobado,
-  Notable, Sobresaliente). Botón + para añadir temario (aún no disponible).
+  Notable, Sobresaliente).
+- Añadir temario (botón +): eliges un PDF, la app lo copia, lee el texto de cada página y enseña una vista previa
+  (páginas, fragmentos de texto, cómo se lee) para ponerle nombre y el tema que se buscará online. Quita cabeceras,
+  pies y números de página. Avisa si el PDF es escaneado (sin texto) o tiene contraseña, y no deja añadir dos veces
+  el mismo PDF. Tras guardar, «Deshacer».
 - Hacer un test: eliges temario, origen (del temario, online o mezcla), «solo las que fallaste», número de preguntas
   y corrección «al momento» (ves si aciertas y la explicación) o «al final» (como un examen, puedes cambiar
   respuestas). Sale ya elegido lo del último test. Las opciones se barajan cada vez y se priorizan las preguntas
@@ -43,7 +48,7 @@ Pensada para estudiantes de universidad. Todo se guarda en el móvil, sin cuenta
 
 Base de datos Room con migraciones explícitas: al actualizar nunca se borran datos. El esquema de cada versión lo
 genera Room en `app/schemas` al compilar y el flujo lo sube como artefacto «esquema-bd»; se guardará en el
-repositorio antes de la primera migración.
+repositorio. Migraciones: 1 → 2 (huella del PDF en cada temario).
 
 ## Código
 

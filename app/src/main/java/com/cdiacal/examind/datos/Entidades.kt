@@ -6,7 +6,10 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-/** Un temario subido en PDF. [archivo] es el nombre de la copia del PDF dentro de la app; [tema], lo que se busca online. */
+/**
+ * Un temario subido en PDF. [archivo] es el nombre de la copia del PDF dentro de la app; [tema], lo que se busca
+ * online; [huellaArchivo], el SHA-256 del PDF para no añadir dos veces el mismo (vacía en los de ejemplo).
+ */
 @Entity(tableName = "temarios")
 data class TemarioEntidad(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -14,7 +17,8 @@ data class TemarioEntidad(
     val tema: String,
     val archivo: String,
     val paginas: Int,
-    val creadoEl: Long
+    val creadoEl: Long,
+    @ColumnInfo(defaultValue = "''") val huellaArchivo: String = ""
 )
 
 /** Un trozo del texto del temario. [usado] es true cuando ya se han generado preguntas con él. */

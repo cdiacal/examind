@@ -6,6 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import org.json.JSONArray
 
 class Conversores {
@@ -22,7 +24,7 @@ class Conversores {
  */
 @Database(
     entities = [TemarioEntidad::class, FragmentoEntidad::class, PreguntaEntidad::class, TestEntidad::class, RespuestaEntidad::class],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 @TypeConverters(Conversores::class)
@@ -32,8 +34,15 @@ abstract class BaseDatos : RoomDatabase() {
     abstract fun tests(): TestDao
 
     companion object {
-        /** Migraciones entre versiones, en orden. Vacía mientras solo exista la versión 1. */
-        val MIGRACIONES = arrayOf<androidx.room.migration.Migration>()
+        /** 1 → 2: huella del PDF en cada temario, para no añadir dos veces el mismo. */
+        val MIGRACION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE temarios ADD COLUMN huellaArchivo TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /** Migraciones entre versiones, en orden. Nunca se borran datos: no hay fallbackToDestructiveMigration. */
+        val MIGRACIONES = arrayOf(MIGRACION_1_2)
 
         @Volatile private var instancia: BaseDatos? = null
 
