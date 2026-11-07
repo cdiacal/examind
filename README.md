@@ -12,7 +12,7 @@ Pensada para estudiantes de universidad. Todo se guarda en el móvil, sin cuenta
 | Modelo de datos (Room) y pruebas | Hecho: compila y pasan las pruebas |
 | Pantalla de inicio | Hecho: compila y pasan las pruebas |
 | Añadir temario PDF y generar preguntas (IA en el móvil) | Pendiente |
-| Hacer test y resultado | Pendiente |
+| Hacer test y resultado | Hecho: compila y pasan las pruebas |
 | Tests con exámenes online y su fuente | Pendiente |
 | Copia de seguridad y exportar a CSV | Pendiente |
 
@@ -20,7 +20,14 @@ Pensada para estudiantes de universidad. Todo se guarda en el móvil, sin cuenta
 
 - Inicio: % de aciertos de tus últimos 20 tests en grande, cuántos temarios, preguntas y tests llevas, tus temarios
   (con sus preguntas del temario y online) y tus 5 últimos tests con su nota y calificación (Suspenso, Aprobado,
-  Notable, Sobresaliente). Botón «Hacer un test» y botón + para añadir temario (aún no disponibles).
+  Notable, Sobresaliente). Botón + para añadir temario (aún no disponible).
+- Hacer un test: eliges temario, origen (del temario, online o mezcla), «solo las que fallaste», número de preguntas
+  y corrección «al momento» (ves si aciertas y la explicación) o «al final» (como un examen, puedes cambiar
+  respuestas). Sale ya elegido lo del último test. Las opciones se barajan cada vez y se priorizan las preguntas
+  nuevas y las que más fallas.
+- Resultado: nota y calificación, aciertos, fallos, en blanco y tiempo; revisión de cada pregunta con la respuesta
+  correcta, la explicación y la fuente (página del temario o enlace del examen online). «Repetir las que fallaste»
+  hace un test nuevo solo con esas. Cada test queda guardado en el historial.
 - Ajustes → «Añadir el ejemplo»: un temario de biología con 12 preguntas y dos tests, para ver la app con datos.
   Se puede deshacer. Sus fuentes online son ficticias (example.org).
 - Ajustes: tema según el sistema, claro u oscuro (se aplica al instante y se recuerda).
@@ -34,8 +41,9 @@ Pensada para estudiantes de universidad. Todo se guarda en el móvil, sin cuenta
   (título, enlace y fecha de consulta) y una huella para no guardar duplicados.
 - **Tests y respuestas**: fecha, aciertos, fallos, en blanco, nota, duración y qué se contestó en cada pregunta.
 
-Base de datos Room con migraciones explícitas: al actualizar nunca se borran datos. El esquema de cada versión está
-en `app/schemas`.
+Base de datos Room con migraciones explícitas: al actualizar nunca se borran datos. El esquema de cada versión lo
+genera Room en `app/schemas` al compilar y el flujo lo sube como artefacto «esquema-bd»; se guardará en el
+repositorio antes de la primera migración.
 
 ## Código
 

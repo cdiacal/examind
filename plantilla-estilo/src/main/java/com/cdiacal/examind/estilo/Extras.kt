@@ -2,6 +2,7 @@ package com.cdiacal.examind.estilo
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -10,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -319,6 +321,93 @@ fun TecladoNumerico(
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             Tecla("0", Modifier.weight(1f), onClick = { onTecla('0') })
             BotonPrincipal(texto = textoAccion, habilitado = habilitado, modifier = Modifier.weight(3f).height(46.dp), onClick = onAccion)
+        }
+    }
+}
+
+// ════════ RESPUESTA DE UN TEST ════════
+
+/** Cómo se pinta una opción de respuesta. */
+enum class EstadoOpcion {
+    /** Sin elegir. */
+    NORMAL,
+    /** Elegida, todavía sin corregir. */
+    ELEGIDA,
+    /** La buena, ya corregida. */
+    CORRECTA,
+    /** La elegida, y era mala. */
+    INCORRECTA,
+    /** Ni elegida ni buena, después de corregir. */
+    ATENUADA
+}
+
+/**
+ * Opción de respuesta de un test: letra en un icono redondeado, texto y, al corregir, la marca con texto
+ * («✓ Correcta», «✗ Tu respuesta»): el color nunca es la única pista. Alto mínimo de 56 dp para tocarla bien.
+ */
+@Composable
+fun TarjetaOpcion(
+    letra: Char,
+    texto: String,
+    estado: EstadoOpcion,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
+) {
+    val forma = RoundedCornerShape(12.dp)
+    val colorEstado = when (estado) {
+        EstadoOpcion.CORRECTA -> colorIngreso()
+        EstadoOpcion.INCORRECTA -> colorGasto()
+        EstadoOpcion.ELEGIDA -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.outline
+    }
+    val grosor = if (estado == EstadoOpcion.NORMAL || estado == EstadoOpcion.ATENUADA) 1.dp else 2.dp
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .alpha(if (estado == EstadoOpcion.ATENUADA) 0.6f else 1f)
+            .clip(forma)
+            .background(
+                if (estado == EstadoOpcion.ELEGIDA) MaterialTheme.colorScheme.primaryContainer
+                else MaterialTheme.colorScheme.surface
+            )
+            .border(grosor, colorEstado, forma)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(30.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .background(
+                    when (estado) {
+                        EstadoOpcion.CORRECTA, EstadoOpcion.INCORRECTA, EstadoOpcion.ELEGIDA -> colorEstado
+                        else -> MaterialTheme.colorScheme.surfaceVariant
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                letra.toString(),
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                color = when (estado) {
+                    EstadoOpcion.NORMAL, EstadoOpcion.ATENUADA -> MaterialTheme.colorScheme.onSurfaceVariant
+                    else -> MaterialTheme.colorScheme.surface
+                }
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(texto, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        val marca = when (estado) {
+            EstadoOpcion.CORRECTA -> "✓ Correcta"
+            EstadoOpcion.INCORRECTA -> "✗ Tu respuesta"
+            else -> null
+        }
+        if (marca != null) {
+            Spacer(Modifier.width(8.dp))
+            Text(marca, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = colorEstado)
         }
     }
 }

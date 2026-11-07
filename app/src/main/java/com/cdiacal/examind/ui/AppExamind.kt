@@ -63,16 +63,18 @@ import com.cdiacal.examind.nucleo.Calificacion
 import com.cdiacal.examind.nucleo.Formato
 import kotlinx.coroutines.launch
 
-/** Pantallas de la app. Por ahora: inicio, ajustes y la galería de estilo. */
-private enum class Pantalla { INICIO, AJUSTES, GALERIA }
+/** Pantallas de la app. */
+private enum class Pantalla { INICIO, TEST, AJUSTES, GALERIA }
 
 @Composable
 fun AppExamind() {
     var pantalla by rememberSaveable { mutableStateOf(Pantalla.INICIO) }
     val avisos = remember { SnackbarHostState() }
     val inicio: InicioViewModel = viewModel()
+    val test: TestViewModel = viewModel()
 
-    BackHandler(enabled = pantalla != Pantalla.INICIO) {
+    // El flujo del test gestiona su propio «atrás» (pregunta antes de salir de un test a medias)
+    BackHandler(enabled = pantalla == Pantalla.AJUSTES || pantalla == Pantalla.GALERIA) {
         pantalla = if (pantalla == Pantalla.GALERIA) Pantalla.AJUSTES else Pantalla.INICIO
     }
 
@@ -82,7 +84,12 @@ fun AppExamind() {
     ) { relleno ->
         Box(Modifier.fillMaxSize().padding(relleno)) {
             when (pantalla) {
-                Pantalla.INICIO -> PantallaInicio(inicio, avisos, onAjustes = { pantalla = Pantalla.AJUSTES })
+                Pantalla.INICIO -> PantallaInicio(
+                    inicio, avisos,
+                    onAjustes = { pantalla = Pantalla.AJUSTES },
+                    onHacerTest = { test.abandonar(); pantalla = Pantalla.TEST }
+                )
+                Pantalla.TEST -> FlujoTest(test, onSalir = { test.abandonar(); pantalla = Pantalla.INICIO })
                 Pantalla.AJUSTES -> PantallaAjustes(
                     inicio, avisos,
                     onVolver = { pantalla = Pantalla.INICIO },
@@ -103,7 +110,7 @@ fun AppExamind() {
 }
 
 @Composable
-private fun PantallaInicio(vm: InicioViewModel, avisos: SnackbarHostState, onAjustes: () -> Unit) {
+private fun PantallaInicio(vm: InicioViewModel, avisos: SnackbarHostState, onAjustes: () -> Unit, onHacerTest: () -> Unit) {
     val estado by vm.estado.collectAsStateWithLifecycle()
     val alcance = rememberCoroutineScope()
     fun proximamente(texto: String) {
@@ -147,7 +154,7 @@ private fun PantallaInicio(vm: InicioViewModel, avisos: SnackbarHostState, onAju
                     "Hacer un test",
                     modifier = Modifier.fillMaxWidth(),
                     habilitado = hayPreguntas,
-                    onClick = { proximamente("Hacer tests llega en la próxima versión.") }
+                    onClick = onHacerTest
                 )
                 if (!hayPreguntas) {
                     Text(

@@ -117,6 +117,13 @@ fun GaleriaEstilo(modifier: Modifier = Modifier) {
                 onAccion = {}
             )
 
+            Seccion("Opciones de un test (sin corregir y corregidas)")
+            TarjetaOpcion('A', "Mitocondria", EstadoOpcion.ELEGIDA, onClick = {})
+            TarjetaOpcion('B', "Ribosoma", EstadoOpcion.NORMAL, onClick = {})
+            TarjetaOpcion('A', "Mitocondria", EstadoOpcion.CORRECTA)
+            TarjetaOpcion('B', "Ribosoma", EstadoOpcion.INCORRECTA)
+            TarjetaOpcion('C', "Lisosoma", EstadoOpcion.ATENUADA)
+
             Seccion("Estado vacío")
             TarjetaPanel { EstadoVacio("Aún no hay movimientos este mes.\nToca el botón + para apuntar el primero.") }
 

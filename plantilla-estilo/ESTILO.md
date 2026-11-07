@@ -121,6 +121,7 @@ Las cifras se formatean con coma decimal y punto de miles (`1.234,56 €`); sin 
 | `EstadoVacio` | Lista vacía diciendo qué hacer a continuación |
 | `TecladoNumerico` + `teclear` | Teclado propio para importes, con suma y Guardar en la última fila |
 | `filaSeleccionable` + `CasillaSeleccion` + `BarraSeleccion` | Selección múltiple manteniendo pulsado |
+| `TarjetaOpcion` + `EstadoOpcion` | Opción de respuesta de un test: elegida, correcta («✓ Correcta»), incorrecta («✗ Tu respuesta») o atenuada (añadido en Examind) |
 
 Emoji como iconos de categoría: sin librería de iconos, reconocibles al instante y con tono propio por `id`.
 
