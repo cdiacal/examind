@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.Examind" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Barra de estado del mismo azul que las cabeceras, en ambos modos -->
+        <item name="android:statusBarColor">#152C52</item>
+        <item name="android:windowBackground">@color/fondo_arranque</item>
+    </style>
+</resources>

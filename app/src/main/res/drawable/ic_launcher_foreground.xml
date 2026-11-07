@@ -1,0 +1,21 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!--
+        Logo de Examind: una hoja de test con tres respuestas; la marcada, en verde menta.
+        Todo dentro del área segura central (66 dp) porque Android recorta los bordes.
+    -->
+    <!-- Hoja -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M37,30 L71,30 A4,4 0 0 1 75,34 L75,74 A4,4 0 0 1 71,78 L37,78 A4,4 0 0 1 33,74 L33,34 A4,4 0 0 1 37,30 Z" />
+    <!-- Respuestas: círculo + línea -->
+    <path android:fillColor="#C9D3E3" android:pathData="M45,41 m-4,0 a4,4 0 1 0 8,0 a4,4 0 1 0 -8,0" />
+    <path android:fillColor="#C9D3E3" android:pathData="M52,39.5 L67,39.5 L67,42.5 L52,42.5 Z" />
+    <path android:fillColor="#5FD9A0" android:pathData="M45,54 m-4,0 a4,4 0 1 0 8,0 a4,4 0 1 0 -8,0" />
+    <path android:fillColor="#152C52" android:pathData="M52,52.5 L67,52.5 L67,55.5 L52,55.5 Z" />
+    <path android:fillColor="#C9D3E3" android:pathData="M45,67 m-4,0 a4,4 0 1 0 8,0 a4,4 0 1 0 -8,0" />
+    <path android:fillColor="#C9D3E3" android:pathData="M52,65.5 L67,65.5 L67,68.5 L52,68.5 Z" />
+</vector>

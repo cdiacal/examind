@@ -1,0 +1,12 @@
+<resources>
+    <!-- Icono de la app -->
+    <color name="ic_launcher_background">#152C52</color>
+
+    <!-- Identidad azul marino, para el widget (que no puede usar el tema de Compose) -->
+    <color name="widget_fondo_inicio">#152C52</color>
+    <color name="widget_fondo_fin">#1E4B87</color>
+    <color name="widget_texto">#FFFFFF</color>
+    <color name="widget_texto_tenue">#D2DCEC</color>
+    <color name="widget_verde">#5FD9A0</color>
+    <color name="widget_rojo">#F0857A</color>
+</resources>

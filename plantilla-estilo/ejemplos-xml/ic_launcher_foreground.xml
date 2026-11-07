@@ -1,0 +1,27 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!--
+        Logo de Ceca: una moneda partida en dos mitades desplazadas.
+        La mitad superior (verde) sube y la inferior (blanca) baja, de forma
+        que el hueco entre ambas dibuja un escalón ascendente.
+        El dibujo se mantiene dentro del área segura central porque Android
+        recorta los bordes al aplicar la máscara del icono adaptativo.
+    -->
+
+    <!-- Mitad superior, desplazada arriba-derecha -->
+    <group android:translateX="58" android:translateY="47">
+        <path
+            android:fillColor="#5FD9A0"
+            android:pathData="M-19,0 A19,19 0 0 1 19,0 L19,2.5 L-19,2.5 Z" />
+    </group>
+
+    <!-- Mitad inferior, desplazada abajo-izquierda -->
+    <group android:translateX="50" android:translateY="61">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M-19,0 A19,19 0 0 0 19,0 L19,-2.5 L-19,-2.5 Z" />
+    </group>
+</vector>

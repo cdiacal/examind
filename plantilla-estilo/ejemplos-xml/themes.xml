@@ -1,0 +1,15 @@
+<resources>
+    <style name="Theme.MiApp" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Barra de estado del mismo azul que las cabeceras, en vez del gris oscuro por defecto -->
+        <item name="android:statusBarColor">#152C52</item>
+    </style>
+
+    <!-- Tema translúcido para que PopupActivity se vea como un diálogo flotante -->
+    <style name="Theme.MiApp.Popup" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:backgroundDimEnabled">true</item>
+    </style>
+</resources>
