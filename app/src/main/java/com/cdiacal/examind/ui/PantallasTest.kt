@@ -62,8 +62,8 @@ import com.cdiacal.examind.nucleo.PreguntaEnTest
 import com.cdiacal.examind.nucleo.SesionTest
 
 /** Número de preguntas que se ofrecen; «Todas» se guarda como un número muy alto. */
-private val NUMEROS = listOf(10, 20, 30, TODAS)
 private const val TODAS = 9_999
+private val NUMEROS = listOf(10, 20, 30, TODAS)
 
 /** Todo el flujo de un test: configurar, contestar y ver el resultado. */
 @Composable
